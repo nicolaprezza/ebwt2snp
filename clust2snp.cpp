@@ -72,9 +72,9 @@ void help(){
 	"-h          Print this help." << endl <<
 	"-i <arg>    Input fasta file (REQUIRED)." << endl <<
 	"-n <arg>    Number of reads in the first sample (REQUIRED)." << endl <<
-	"-L <arg>    Context length for grouped SNPs (default: " << k_left_def << ")." << endl <<
-	"-R <arg>    Maximum length of context following SNPs (default: " << k_right_def << ")." << endl <<
-	"-v <arg>    Maximum number of SNPs allowed in a group (default: " << max_snvs_def << ")."<< endl <<
+	"-L <arg>    Length of left-context, SNP included (default: " << k_left_def << ")." << endl <<
+	"-R <arg>    Maximum length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
+	"-v <arg>    Maximum number of SNPs allowed in a non-isolated group (default: " << max_snvs_def << ")."<< endl <<
 	"-m <arg>    Minimum coverage per sample per event (default: " << mcov_out_def << ")."<< endl <<
 	"-p <arg>    p-value of discarded cluster sizes (default: " << pval_def << ")."<< endl <<
 	"-e <arg>    Tolerated error rate in clusters (default: " << err_allowed_def << ", range: [0, 0.5))." << endl <<
