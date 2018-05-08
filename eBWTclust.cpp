@@ -35,9 +35,9 @@ void help(){
 	"-m <arg>    Discard clusters smaller than this value (default: " << min_def << ")" << endl <<
 //	"-b          Input index files are in BCR format (default: GESA format)" << endl << endl <<
 
-	"To run eBWTclust, you must first build the Enhanced Generalized Suffix Array of the input" << endl <<
-	"sequences. The EGSA must  be stored in the input file's  folder adding extension .0.egsa to " << endl <<
-	"the name of the input file  (github.com/felipelouza/egsa). Output  is stored in "
+	"\nTo run eBWTclust, you must first build the Enhanced Generalized Suffix Array of the input" << endl <<
+	"sequences. The EGSA must be stored in the input file's folder adding extension .0.egsa to " << endl <<
+	"the name of the input file  (github.com/felipelouza/egsa). Output  is stored in " << endl <<
 	"reads.fasta.clusters." << endl;
 	 exit(0);
 }

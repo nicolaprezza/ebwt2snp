@@ -70,24 +70,27 @@ void help(){
 	cout << "clust2snp [options]" << endl <<
 	"Options:" << endl <<
 	"-h          Print this help." << endl <<
-	"-i <arg>    Input fasta file (REQUIRED)." << endl <<
+	"-i <arg>    Input fasta file containing the samples' reads (REQUIRED)." << endl <<
 	"-n <arg>    Number of reads in the first sample (REQUIRED)." << endl <<
 	"-L <arg>    Length of left-context, SNP included (default: " << k_left_def << ")." << endl <<
 	"-R <arg>    Maximum length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
-	"-v <arg>    Maximum number of SNPs allowed in a non-isolated group (default: " << max_snvs_def << ")."<< endl <<
-	"-m <arg>    Minimum coverage per sample per event (default: " << mcov_out_def << ")."<< endl <<
+	"-v <arg>    Maximum number of SNPs allowed in left context (default: " << max_snvs_def << ")."<< endl <<
+	"-m <arg>    Minimum coverage per  sample per event (default: " << mcov_out_def << "). Increasing this value  reduces" << endl <<
+	"            sensitivity and increases precision. Note: clust2snp produces a plot of the cluster" << endl <<
+	"            size distribution. You can use this plot to find a good value for -m."<< endl <<
 	"-p <arg>    p-value of discarded cluster sizes (default: " << pval_def << ")."<< endl <<
 	"-e <arg>    Tolerated error rate in clusters (default: " << err_allowed_def << ", range: [0, 0.5))." << endl <<
 //	"-D          Samples are diploid (experimental! default: haploid)." << endl <<
 //	"-b          Input index files are in BCR format (default: GESA format)." << endl << endl <<
 //	"-d          Output fasta in discoSNP format (default: off)" << endl << endl<<
 
-	"To run clust2snp, you must first build (1)  the Enhanced Generalized Suffix Array of the input" << endl <<
+	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input" << endl <<
 	"sequences, stored in a file with extension .0.egsa and with the same name of the input file" << endl <<
-	"(github.com/felipelouza/egsa), and  (2) the cluster file  built with cluster-bwt. Output is" << endl <<
+	"(github.com/felipelouza/egsa), and (2) the cluster file built with cluster-bwt. Output is" << endl <<
 	"stored in reads.snp.fasta, where reads.fasta is the input fasta file." << endl << endl <<
 
-	"Output: SNPs are output in KisSNP format as a fasta file. " << endl;
+	"Output: SNPs are output in KisSNP2 format as a fasta file. IMPORTANT: in most of the cases, each" << endl <<
+	"SNP is reported twice: one time on the forward strand and one on the reverse strand. " << endl;
 
 	exit(0);
 }

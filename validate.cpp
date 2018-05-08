@@ -30,7 +30,7 @@ void help(){
 	"Options:" << endl <<
 	"-h          Print this help" << endl <<
 	"-v <arg>    VCF file with SNPs (REQUIRED)" << endl <<
-	"-c <arg>    Calls produced by bw-snp (extension .snp.fasta) (REQUIRED)" << endl <<
+	"-c <arg>    Calls in KisSNP2 format (REQUIRED)" << endl <<
 	"-f <arg>    Reference fasta file of first sample (REQUIRED)" << endl <<
 	"-k <arg>    Value to define non-isolated SNPs (default: " << k_nonis_def << ")" << endl <<
 	"-l <arg>    Max read length (default: " << rlength_def << ")" << endl;
