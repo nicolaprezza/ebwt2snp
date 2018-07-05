@@ -30,7 +30,7 @@ int mcov_out = 0;//minimum coverage required in the output events
 int max_snvs = 0;//maximum number of SNVs allowed in left contexts
 string input;
 uint64_t nr_reads1 = 0;
-int mcov1 = 0, mcov2 = 0;//minimum coverage required for each allele; computed automatically
+int mcov1 = 0, mcov2 = 0;//minimum coverage required in a cluster of an individual; computed automatically
 int max_cov1;//maximum coverage allowed; computed automatically
 int max_cov2;//maximum coverage allowed; computed automatically
 double pval = 0;
@@ -40,6 +40,12 @@ bool bcr = false;
 bool diploid = false;
 uint64_t MAX_MEM = 0;//max RAM allowed for events buffer, in MB
 double read_len_def = 100;//average read length
+
+/*
+ * we declare a haplotype to be heterozigote if max2/max1 >= heterozigosis_threshold, where max1 and max2 are
+ * the absolute frequencies of the most frequent and second most frequent nucleotide in the cluster (of a single individual).
+ */
+double heterozigosis_threshold = 0.5;
 
 //letter with at least this frequency goes in consensus
 double min_consensus_freq = 0.65;
@@ -80,7 +86,7 @@ void help(){
 	"            size distribution. You can use this plot to find a good value for -m."<< endl <<
 	"-p <arg>    p-value of discarded cluster sizes (default: " << pval_def << ")."<< endl <<
 	"-e <arg>    Tolerated error rate in clusters (default: " << err_allowed_def << ", range: [0, 0.5))." << endl <<
-//	"-D          Samples are diploid (experimental! default: haploid)." << endl <<
+	"-D          Samples are diploid (experimental! default: haploid)." << endl <<
 //	"-b          Input index files are in BCR format (default: GESA format)." << endl << endl <<
 //	"-d          Output fasta in discoSNP format (default: off)" << endl << endl<<
 
@@ -156,10 +162,13 @@ string event_type(vector<vector<unsigned int> > counts){
 		/*
 		 * second filter: sum of two most frequent nucleotides must
 		 * not be too covered or too less covered
+		 *
+		 * after this procedure, max1 and max2 are the indices of the two most frequent
+		 * nucleotides
 		 */
 
 		int max1=std::distance(counts[indiv].begin(),std::max_element(counts[indiv].begin(),counts[indiv].end()));;
-		int max2;
+		int max2=5;
 
 		int M = -1;
 		for(int b=0;b<4;++b){
@@ -173,28 +182,12 @@ string event_type(vector<vector<unsigned int> > counts){
 
 		}
 
-		/*
-		 * probability of homozigosis:
-		 *
-		 * P(allele1 good coverage) * P(allele2 good coverage) = P(allele good coverage)^2
-		 *
-		 */
-		double p_h = indiv==0 ? Poi1[counts[indiv][max1]] : Poi2[counts[indiv][max1]];
-		p_h *= p_h;
+		auto max_freq_1 = counts[indiv][max1]; //absolute frequency of most frequent nucleotide
+		auto max_freq_2 = max2==5 ? 0 : counts[indiv][max2]; //absolute frequency of second most frequent nucleotide
 
-		/*
-		 * probability of heterozigosis
-		 *
-		 * P(allele1 good coverage) * P(allele2 good coverage)
-		 *
-		 */
-		double p_e = indiv==0 ? Poi1[2*counts[indiv][max1]] : Poi2[2*counts[indiv][max1]];
-		p_e *= indiv==0 ? Poi1[2*counts[indiv][max2]] : Poi2[2*counts[indiv][max2]];
+		double rate = double(max_freq_2)/double(max_freq_1);
 
-		/*
-		 * homozigosis more likely
-		 */
-		if(p_h>p_e){
+		if(rate < heterozigosis_threshold){//homozigote
 
 			if(		counts[indiv][max1] < mcov or
 					counts[indiv][max1] > max_cov or
@@ -204,12 +197,7 @@ string event_type(vector<vector<unsigned int> > counts){
 			out[indiv*2] = int_to_base(max1);
 			out[indiv*2+1] = int_to_base(max1);
 
-		}
-
-		/*
-		 * heterozigosis more likely
-		 */
-		if(p_e>=p_h){
+		}else{//heterozigote
 
 			/*
 			 * check coverage/frequencies
@@ -234,6 +222,24 @@ string event_type(vector<vector<unsigned int> > counts){
 
 /*
  * check if the haplotipes are a valid variant
+ *
+ * Allowed haplotypes:
+ *
+ * AAGG -> both homozigote: report SNP A -> G
+ * AGAA -> one homozigote and one heterozigote: report SNP G -> A
+ *
+ * Not allowed haplotypes:
+ *
+ * AAAA -> no mutations
+ *
+ * AGAG -> not allowed because it is more likely that they simply have the same heterozigote
+ *         haplotype (AG/AG). Unlikely that they were, e.g. GAAG and first individual has 2 mutations
+ *
+ * AGTA -> too many mutations
+ *
+ * NNNN -> in this case the haplotype has already been discarded in the previous step
+ *
+ *
  */
 bool variant(string hapl){
 
@@ -347,15 +353,20 @@ void print_event(event & e, vector<string> & r, string & right_context){
 }
 
 
-//find consensus in a set of strings, aligning them on the right
-//returns empty string if consensus cannot be found
+/* find consensus in a set of strings of the same length
+ * returns empty string if consensus cannot be found
+ *
+ * strategy: count number of bases of each type at each position of the
+ * input strings. At each position, choose the base with at least min_consensus_freq
+ * frequency. If no such base exists, then consensus cannot be found and procedure fails
+ * (it returns empty string).
+ *
+ */
 string consensus(vector<string> & S){
 
 	if(S.size()==0) return "";
 
 	int len = S[0].length();
-
-	//consensus of reverse strings
 	auto C = vector<vector<int>>(len, vector<int>(4,0));
 
 	for(auto s:S)
@@ -560,6 +571,8 @@ void call_event(event & e, vector<string> & left_contexts, string & right_contex
 
 }
 
+
+
 void call_events(vector<event> & event_buffer, string fasta_path, ofstream & out_file){
 
 	cout << "Extracting reads from fasta file ... " << flush;
@@ -732,6 +745,11 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 			good_lcp_len = good_lcp_len > k_right ? k_right : good_lcp_len;
 
 			string snp = "NN";
+
+			/*
+			 * extract the event from type. After this procedure,
+			 * 'snp' contains the SNP (e.g. AC for "A->C").
+			 */
 
 			if(type[0]!=type[2]){
 				snp[0]=type[0];
@@ -1046,7 +1064,7 @@ int main(int argc, char** argv){
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:e:p:v:L:R:m:")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:e:p:v:L:R:m:D")) != -1){
 		switch (opt){
 			case 'h':
 				help();
@@ -1085,14 +1103,6 @@ int main(int argc, char** argv){
 				pval = atof(optarg);
 				//cout << "k = " << M << "\n";
 			break;
-			/*case 'r':
-				read_len = atof(optarg);
-				//cout << "k = " << M << "\n";
-			break;*/
-			/*case 'd':
-				discoSNP=true;
-				//cout << "k = " << M << "\n";
-			break;*/
 			case 'v':
 				max_snvs = atoi(optarg);
 			break;
