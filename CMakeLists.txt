@@ -24,3 +24,4 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -Ofast -fstrict-aliasing -march=nat
 add_executable(clust2snp clust2snp.cpp)
 add_executable(eBWTclust eBWTclust.cpp)
 add_executable(validate validate.cpp)
+add_executable(differentialVCF differentialVCF.cpp)
