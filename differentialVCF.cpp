@@ -193,7 +193,7 @@ int main(int argc, char** argv){
 
 		getline(vcf_file1, line);
 
-		if(line[0] != '#'){
+		if(line[0] != '#' and line.compare("")!=0){
 
 			std::istringstream is( line );
 
@@ -204,6 +204,12 @@ int main(int argc, char** argv){
 			string ALT;
 
 			is >> chr >> pos >> id >> REF >> ALT;
+
+			//if(pos==366858){
+
+			//cout << "******* CALL \"" << chr << " " << (pos) << " " << REF << " " << ALT << "\" of file " << vcf_path2 << endl;
+
+			//}
 
 			pos--;//coordinates are 1-based in the vcf file
 
@@ -220,7 +226,7 @@ int main(int argc, char** argv){
 
 					if(ref[chr].compare("")==0){
 
-						cout << "contig " <<  chr << " does not exist." << endl;
+						cout << "contig \"" <<  chr << "\" does not exist." << endl;
 
 					}else if(pos >= ref[chr].length()){
 
@@ -250,7 +256,7 @@ int main(int argc, char** argv){
 
 		getline(vcf_file2, line);
 
-		if(line[0] != '#'){
+		if(line[0] != '#' and line.compare("")!=0){
 
 			std::istringstream is( line );
 
@@ -261,6 +267,7 @@ int main(int argc, char** argv){
 			string ALT;
 
 			is >> chr >> pos >> id >> REF >> ALT;
+
 
 			pos--;//coordinates are 1-based in the vcf file
 
@@ -277,7 +284,7 @@ int main(int argc, char** argv){
 
 					if(ref[chr].compare("")==0){
 
-						cout << "contig " <<  chr << " does not exist." << endl;
+						cout << "contig \"" <<  chr << "\" does not exist." << endl;
 
 					}else if(pos >= ref[chr].length()){
 
