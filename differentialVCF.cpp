@@ -409,9 +409,18 @@ int main(int argc, char** argv){
 	ofstream new_ref;
 	new_ref.open(new_ref_file);
 
+	int line_length = 60;//line length in fasta
+
 	for(string c : contigs){
 
-		new_ref << ">" << c << endl << ref[c] << endl;
+		new_ref << ">" << c << endl;
+
+		for(unsigned long i = 0;i<ref[c].length()/line_length + (ref[c].length()%line_length > 0);++i){
+
+			new_ref << ref[c].substr(i*line_length,line_length) << endl;
+
+		}
+
 
 	}
 
