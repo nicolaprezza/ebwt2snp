@@ -168,7 +168,7 @@ int main(int argc, char** argv){
 	 * LOAD SNPS FROM VCF
 	 */
 
-	cout << "Loading VCFs ... " << flush;
+	cout << "Loading VCFs ... " << endl;
 
 	uint64_t n_snps=0;//number of SNPs in the VCF
 
@@ -184,6 +184,10 @@ int main(int argc, char** argv){
 	set<call> calls_vcfOut;
 
 	//load VCF1
+
+	int tot_calls = 0;
+	int discarded_calls = 0;//keep track of calls that disagree with reference and throw a warning
+	int max_warnings = 50; //max number of warnings to show
 
 	while(not vcf_file1.eof()){
 
@@ -203,11 +207,38 @@ int main(int argc, char** argv){
 
 			pos--;//coordinates are 1-based in the vcf file
 
-			if(ref[chr].compare("")!=0){//if chromosome exists in the reference file
+			if(ref[chr].compare("")!=0 && pos < ref[chr].length() && ref[chr][pos] == REF[0]){
 
 				calls_vcf1.insert(call {chr, pos, REF[0], ALT[0]});
 
+			}else{
+
+				if(discarded_calls<max_warnings){
+
+					cout << "WARNING: call \"" << chr << " " << (pos+1) << " " << REF << " " << ALT << "\" of file " << vcf_path1 << " does not match the reference." << endl;
+					cout << "   problem: " << flush;
+
+					if(ref[chr].compare("")==0){
+
+						cout << "contig " <<  chr << " does not exist." << endl;
+
+					}else if(pos >= ref[chr].length()){
+
+						cout << "VCF position exceeds the contig's length " << ref[chr].length() << endl;
+
+					}else{
+
+						cout << "Reference base " << ref[chr][pos] << " does not match VCF" << endl;
+
+					}
+
+				}
+
+				discarded_calls++;
+
 			}
+
+			tot_calls++;
 
 		}
 
@@ -233,15 +264,62 @@ int main(int argc, char** argv){
 
 			pos--;//coordinates are 1-based in the vcf file
 
-			if(ref[chr].compare("")!=0){//if chromosome exists in the reference file
+			if(ref[chr].compare("")!=0 && pos < ref[chr].length() && ref[chr][pos] == REF[0]){
 
 				calls_vcf2.insert(call {chr, pos, REF[0], ALT[0]});
 
+			}else{
+
+				if(discarded_calls<max_warnings){
+
+					cout << "WARNING: call \"" << chr << " " << (pos+1) << " " << REF << " " << ALT << "\" of file " << vcf_path2 << " does not match the reference." << endl;
+					cout << "   problem: " << flush;
+
+					if(ref[chr].compare("")==0){
+
+						cout << "contig " <<  chr << " does not exist." << endl;
+
+					}else if(pos >= ref[chr].length()){
+
+						cout << "VCF position exceeds the contig's length " << ref[chr].length() << endl;
+
+					}else{
+
+						cout << "Reference base " << ref[chr][pos] << " does not match VCF" << endl;
+
+					}
+
+				}
+
+				discarded_calls++;
+
 			}
+
+			tot_calls++;
 
 		}
 
 	}
+
+	cout << "done." << endl;
+
+	if(discarded_calls>=max_warnings){
+
+		cout << "(" << (discarded_calls-max_warnings) << " more WARNINGS not shown)" << endl;
+
+	}
+
+	if(discarded_calls>0){
+
+		cout << "WARNING: " << discarded_calls <<  "/" << tot_calls << " VCF entries disagreed with reference and were discarded." << endl;
+
+	}else{
+
+		cout << "All VCF calls agreed with reference." << endl;
+
+	}
+
+	cout << "Computing differential VCF ... " << flush;
 
 	//compute differential VCF
 
@@ -298,13 +376,13 @@ int main(int argc, char** argv){
 
 	for(auto ind2 : calls_vcf2){
 
-		assert(ind2.REF == ref[ind2.contig][ind2.pos]);
-
 		auto ind1 = calls_vcf1.find(ind2);
 
 		//note: take care only of the case where the call is in ind2 but not in ind1.
 		//the other case has already been taken into account in the previous for loop.
 		if(ind1 == calls_vcf1.end()){
+
+			assert(ind2.REF == ref[ind2.contig][ind2.pos]);
 
 			if(ref[ind2.contig].compare("")!=0){
 
@@ -342,5 +420,7 @@ int main(int argc, char** argv){
 		differential_vcf << c.contig << "\t" << (c.pos+1) << "\t.\t" << c.REF << "\t" << c.ALT << endl;
 
 	}
+
+	cout << "done." << endl;
 
 }
