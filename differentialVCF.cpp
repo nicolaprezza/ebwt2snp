@@ -26,14 +26,14 @@ void help(){
 	cout << "relativeVCF [options]" << endl <<
 	"Options:" << endl <<
 	"-h          Print this help" << endl <<
-	"-1 <arg1>    VCF file with SNPs of individual 1. REQUIRED." << endl <<
-	"-2 <arg2>    VCF file with SNPs of individual 2. REQUIRED" << endl <<
 	"-f <argf>    Reference fasta file used to generate the VCFs. REQUIRED" << endl <<
+	"-1 <arg1>    VCF file with SNPs of individual 1 w.r.t. reference. REQUIRED." << endl <<
+	"-2 <arg2>    VCF file with SNPs of individual 2 w.r.t. reference. REQUIRED" << endl <<
 	"-o <argo>    output directory (ending with slash, e.g. /home/). REQUIRED." << endl << endl <<
-	"creates two files in <argo>: a new reference applying the SNPs <arg2> to " << endl <<
+	"creates two files in <argo>: a new reference applying the SNPs <arg1> to " << endl <<
 	"<argf>, and a new differential VCF file containing the SNPs of individual " << endl <<
-	"1 relative to the new reference. Note: only SNPs are admitted in the input "    << endl <<
-	"VCF files." << endl;
+	"2 relative to the new reference (therefore to individual 1). Note: only " << endl <<
+	"SNPs are admitted in the input VCF files." << endl;
 	exit(0);
 }
 
@@ -205,12 +205,6 @@ int main(int argc, char** argv){
 
 			is >> chr >> pos >> id >> REF >> ALT;
 
-			//if(pos==366858){
-
-			//cout << "******* CALL \"" << chr << " " << (pos) << " " << REF << " " << ALT << "\" of file " << vcf_path2 << endl;
-
-			//}
-
 			pos--;//coordinates are 1-based in the vcf file
 
 			if(ref[chr].compare("")!=0 && pos < ref[chr].length() && ref[chr][pos] == REF[0]){
@@ -330,75 +324,66 @@ int main(int argc, char** argv){
 
 	//compute differential VCF
 
-	for(auto ind1 : calls_vcf1){
+	for(auto ind2 : calls_vcf2){
 
-		assert(ind1.REF == ref[ind1.contig][ind1.pos]);
+		assert(ind2.REF == ref[ind2.contig][ind2.pos]);
 
-		auto ind2 = calls_vcf2.find(ind1);
+		auto ind1 = calls_vcf1.find(ind2);
 
-		if(ind2 != calls_vcf2.end()){
+		if(ind1 != calls_vcf1.end()){
 
 			//if call found
 
-			assert(ind1.REF == ind2->REF);//same position, therefore reference base must match
+			assert(ind2.REF == ind1->REF);//same position, therefore reference base must match
 
-			if(ind1.ALT != ind2->ALT){
+			if(ind2.ALT != ind1->ALT){
 
 				//if the REF is mutated into 2 different bases in the two idividuals
 
-				//same coordinates, but individual 2 becomes REF and individual 1 becomes ALT
-				calls_vcfOut.insert(call {ind1.contig, ind1.pos, ind2->ALT, ind1.ALT});
-
-
+				//same coordinates, but individual 1 becomes REF and individual 2 becomes ALT
+				calls_vcfOut.insert(call {ind2.contig, ind2.pos, ind1->ALT, ind2.ALT});
 
 			}//else: same mutation in the two individuals, therefore nothing to report in the differential VCF
 
 			//in both cases we need to mutate the reference
 
-			if(ref[ind1.contig].compare("")!=0){//if chromosome exists in the reference file
+			if(ref[ind2.contig].compare("")!=0){//if chromosome exists in the reference file
 
-				if(ind1.pos>=ref[ind1.contig].size()){
-
-					cout << ind1.pos << " / " << ref[ind1.contig].size() << endl;
-
-				}
-
-
-				assert(ind1.pos<ref[ind1.contig].size());
-				ref[ind1.contig][ind1.pos] = ind2->ALT;
+				assert(ind2.pos<ref[ind2.contig].size());
+				ref[ind2.contig][ind2.pos] = ind1->ALT;
 
 			}
 
 		}else{
 
-			//call not found: individual 2 has the reference base
+			//call not found: individual 1 has the reference base
 			//insert the same call in the relative VCF
 
-			calls_vcfOut.insert(ind1);
+			calls_vcfOut.insert(ind2);
 
 		}
 
 	}
 
 
-	for(auto ind2 : calls_vcf2){
+	for(auto ind1 : calls_vcf1){
 
-		auto ind1 = calls_vcf1.find(ind2);
+		auto ind2 = calls_vcf2.find(ind1);
 
-		//note: take care only of the case where the call is in ind2 but not in ind1.
+		//note: take care only of the case where the call is in VCF 1 but not in VCF 2.
 		//the other case has already been taken into account in the previous for loop.
-		if(ind1 == calls_vcf1.end()){
+		if(ind2 == calls_vcf2.end()){
 
-			assert(ind2.REF == ref[ind2.contig][ind2.pos]);
+			assert(ind1.REF == ref[ind1.contig][ind1.pos]);
 
-			if(ref[ind2.contig].compare("")!=0){
+			if(ref[ind1.contig].compare("")!=0){
 
 				//insert call
-				assert(ind2.pos<ref[ind2.contig].size());
-				calls_vcfOut.insert(call {ind2.contig, ind2.pos, ind2.ALT, ref[ind2.contig][ind2.pos]});
+				assert(ind1.pos<ref[ind1.contig].size());
+				calls_vcfOut.insert(call {ind1.contig, ind1.pos, ind1.ALT, ref[ind1.contig][ind1.pos]});
 
 				//mutate reference
-				ref[ind2.contig][ind2.pos] = ind2.ALT;
+				ref[ind1.contig][ind1.pos] = ind1.ALT;
 
 			}
 
