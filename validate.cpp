@@ -29,7 +29,7 @@ void help(){
 	cout << "validate [options]" << endl <<
 	"Options:" << endl <<
 	"-h          Print this help" << endl <<
-	"-v <arg>    VCF file with SNPs (REQUIRED)" << endl <<
+	"-v <arg>    VCF file with the ground-truth SNPs (REQUIRED)" << endl <<
 	"-c <arg>    Calls in KisSNP2 format (REQUIRED)" << endl <<
 	"-f <arg>    Reference fasta file of first sample (REQUIRED)" << endl <<
 	"-k <arg>    Value to define non-isolated SNPs (default: " << k_nonis_def << ")" << endl <<
@@ -241,28 +241,35 @@ int main(int argc, char** argv){
 
 			pos--;//coordinates are 1-based in the vcf file
 
-			if(ref[chr].compare("")!=0){//if chromosome exists in the reference file
+			//keep just SNPs
+			if(		(REF.compare("A")==0 or REF.compare("C")==0 or REF.compare("T")==0 or REF.compare("G")==0) and
+					(ALT.compare("A")==0 or ALT.compare("C")==0 or ALT.compare("T")==0 or ALT.compare("G")==0)
+			){
 
-				n_snps++;
+				if(ref[chr].compare("")!=0){//if chromosome exists in the reference file
 
-				//insert forward call
-				if(pos >= rlength && pos+rlength < ref[chr].size()){
+					n_snps++;
 
-					string right_context = ref[chr].substr(pos+1,rlength);
-					string left_context = REV(ref[chr].substr(pos-rlength,rlength));
+					//insert forward call
+					if(pos >= rlength && pos+rlength < ref[chr].size()){
 
-					calls_vcf.push_back(call {right_context, left_context, REF[0], ALT[0], ID, true, pos});
+						string right_context = ref[chr].substr(pos+1,rlength);
+						string left_context = REV(ref[chr].substr(pos-rlength,rlength));
 
-					//insert RC call
+						calls_vcf.push_back(call {right_context, left_context, REF[0], ALT[0], ID, true, pos});
 
-					left_context = REV(RC(ref[chr].substr(pos+1,rlength)));
-					right_context = RC(ref[chr].substr(pos-rlength,rlength));
+						//insert RC call
 
-					calls_vcf.push_back(call {right_context, left_context, RC(REF[0]), RC(ALT[0]), ID, true, pos});
+						left_context = REV(RC(ref[chr].substr(pos+1,rlength)));
+						right_context = RC(ref[chr].substr(pos-rlength,rlength));
+
+						calls_vcf.push_back(call {right_context, left_context, RC(REF[0]), RC(ALT[0]), ID, true, pos});
+
+					}
+
+					++ID;
 
 				}
-
-				++ID;
 
 			}
 

@@ -349,20 +349,11 @@ int main(int argc, char** argv){
 				//same coordinates, but individual 2 becomes REF and individual 1 becomes ALT
 				calls_vcfOut.insert(call {ind1.contig, ind1.pos, ind2->ALT, ind1.ALT});
 
-
-
 			}//else: same mutation in the two individuals, therefore nothing to report in the differential VCF
 
 			//in both cases we need to mutate the reference
 
 			if(ref[ind1.contig].compare("")!=0){//if chromosome exists in the reference file
-
-				if(ind1.pos>=ref[ind1.contig].size()){
-
-					cout << ind1.pos << " / " << ref[ind1.contig].size() << endl;
-
-				}
-
 
 				assert(ind1.pos<ref[ind1.contig].size());
 				ref[ind1.contig][ind1.pos] = ind2->ALT;
