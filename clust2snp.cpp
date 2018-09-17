@@ -833,9 +833,9 @@ void statistics(string & egsa_path, string & clusters_path){
 
 	uint64_t i = 0;//position on suffix array
 
-	vector<int> cov_1 = vector<int>(200, 0);
-	vector<int> cov_2 = vector<int>(200, 0);
-	vector<int> cov = vector<int>(200, 0);
+	vector<unsigned long> cov_1 = vector<unsigned long>(200, 0);
+	vector<unsigned long> cov_2 = vector<unsigned long>(200, 0);
+	vector<unsigned long> cov = vector<unsigned long>(200, 0);
 
 	//read first egsa entry
 	t_GSA e = read_el(egsa, bcr);
@@ -904,14 +904,19 @@ void statistics(string & egsa_path, string & clusters_path){
 
 	}
 
-	int max=0;
+	unsigned long  max=0;
 	for(auto x:cov_1) max=x>max?x:max;
 	for(auto x:cov_2) max=x>max?x:max;
 
+	unsigned long max2=0;
+	for(int i=0;i<cov_1.size();++i) max2=cov_1[i]*i>max2?cov_1[i]*i:max2;
+	for(int i=0;i<cov_2.size();++i) max2=cov_2[i]*i>max2?cov_2[i]*i:max2;
+
 	int scale = max/100;
+	int scale2 = max2/100;
 
 	cout << "\nSample 1, distribution of cluster size: "<< endl;
-	cout << "\ncov\tf\tcumul" << endl;
+	cout << "\ncoverage\t# clusters with this coverage" << endl;
 	for(int i=0;i<cov_1.size() and cov_1[i] > max/200 ;++i){
 
 		if(i%1==0){
@@ -922,8 +927,9 @@ void statistics(string & egsa_path, string & clusters_path){
 
 	}
 
+
 	cout << "\nSample 2, distribution of cluster size: "<< endl;
-	cout << "\ncov\tf\tcumul" << endl;
+	cout << "\ncoverage\t# clusters with this coverage" << endl;
 	for(int i=0;i<cov_2.size()  and cov_2[i] > max/200;++i){
 
 		if(i%1==0){
@@ -933,6 +939,33 @@ void statistics(string & egsa_path, string & clusters_path){
 		}
 
 	}
+
+
+	cout << "\nSample 1, distribution of base coverage: "<< endl;
+	cout << "\ncoverage\t# bases in a cluster with this coverage" << endl;
+	for(int i=0;i<cov_1.size() and cov_1[i] > max/200 ;++i){
+
+		if(i%1==0){
+			cout << i << "\t" << flush;
+			for(unsigned long j=0;j<(cov_1[i]*i)/scale2;++j) cout << "-" << flush;
+			cout << "   " << cov_1[i]*i << endl;
+		}
+
+	}
+
+
+	cout << "\nSample 2, distribution of base coverage: "<< endl;
+	cout << "\ncoverage\t# bases in a cluster with this coverage" << endl;
+	for(int i=0;i<cov_2.size() and cov_2[i] > max/200 ;++i){
+
+		if(i%1==0){
+			cout << i << "\t" << flush;
+			for(unsigned long j=0;j<(cov_2[i]*i)/scale2;++j) cout << "-" << flush;
+			cout << "   " << cov_2[i]*i << endl;
+		}
+
+	}
+
 
 	/*
 	 * now cut the noise
