@@ -31,7 +31,7 @@ int mcov_out_def = 5;//minimum coverage required in the output events
 int mcov_out = 0;//if a letter in a cluster appears at least this number of times, then it is considered as a relevant event
 
 //automatically computed using p-value
-int max_clust_length = 60;//TODO compute automatically
+int max_clust_length = 120;//TODO compute automatically
 
 string input;
 uint64_t nr_reads1 = 0;
