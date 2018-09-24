@@ -518,7 +518,7 @@ void statistics(string & clusters_path){
 	clusters.open(clusters_path, ios::in | ios::binary);
 
 	//init with max cluster length 1000
-	uint64_t MAX_C_LEN = 1000;
+	uint64_t MAX_C_LEN = 200;
 	auto clust_len_freq = vector<uint64_t>(MAX_C_LEN,0);
 
 	uint64_t max_len = 0;
@@ -533,9 +533,12 @@ void statistics(string & clusters_path){
 		clusters.read((char*)&start, sizeof(uint64_t));
 		clusters.read((char*)&length, sizeof(uint16_t));
 
-		if(length <= MAX_C_LEN) clust_len_freq[length]++;
+		if(length <= MAX_C_LEN){
 
-		max_len = length>max_len ? length : max_len;
+			clust_len_freq[length]++;
+			max_len = length>max_len ? length : max_len;
+
+		}
 
 	}
 
