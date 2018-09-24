@@ -577,7 +577,7 @@ int main(int argc, char** argv){
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
