@@ -17,8 +17,8 @@ typedef pair<uint64_t,uint32_t> coordinate;//suffix array coordinate (text, suff
  */
 typedef struct{
 
-	int_text	text;
-	int_suff	suff;
+	int_text	text; //read nr
+	int_suff	suff; //starting position of the suffix in the read
 	int_lcp 	lcp;
 	int8		bwt;
 

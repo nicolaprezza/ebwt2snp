@@ -15,61 +15,31 @@
 
 using namespace std;
 
-//int mcov_def = 5;//minimum coverage
-int MAX_MEM_def = 2048;
-double err_allowed_def = 0.15;
-int k_left_def = 20;//extract k_left nucleotides from left of suffix array range, for each entry in the cluster
-int k_right_def = 30;//extract k_right nucleotides from right of suffix array range, only for entry with max LCP
-
-//discard clusters whose sizes fall in this area of the tails of Poisson distribution
-double pval_def = 0.05;
-int max_snvs_def = 3;//maximum number of SNVs allowed in left contexts
-int mcov_out_def = 4;//minimum coverage required in the output events
-
-int mcov_out = 0;//minimum coverage required in the output events
-int max_snvs = 0;//maximum number of SNVs allowed in left contexts
-string input;
-uint64_t nr_reads1 = 0;
-int mcov1 = 0, mcov2 = 0;//minimum coverage required in a cluster of an individual; computed automatically
-int max_cov1;//maximum coverage allowed; computed automatically
-int max_cov2;//maximum coverage allowed; computed automatically
-double pval = 0;
-double err_allowed = 0;//
-double lcpfreq = 0;//output read's length is the max LCP in common of this fraction of contiguous suffixes in the cluster
-bool bcr = false;
-bool diploid = false;
-uint64_t MAX_MEM = 0;//max RAM allowed for events buffer, in MB
-double read_len_def = 100;//average read length
-
-/*
- * we declare a haplotype to be heterozigote if max2/max1 >= heterozigosis_threshold, where max1 and max2 are
- * the absolute frequencies of the most frequent and second most frequent nucleotide in the cluster (of a single individual).
- */
-double heterozigosis_threshold = 0.5;
-
-//letter with at least this frequency goes in consensus
-double min_consensus_freq = 0.65;
-
-uint64_t id_nr = 1;
-
+int k_left_def = 31;//extract k_left nucleotides from left of suffix array range, for each entry in the cluster (includes the SNV)
 int k_left = 0;//extract k_left nucleotides from left of suffix array range, for each entry in the cluster
+
+int k_right_def = 30;//extract k_right nucleotides from right of suffix array range, only for entry with max LCP
 int k_right = 0;//extract k_right nucleotides from right of suffix array range, for each entry in the cluster
 
-double read_len = 0;//average read length
-double min_k = 16;//minimum LCP we look at
-double err_rate = 0.01;//sequencing error rate
-//fraction of average coverage that we can expect to be in the clusters (computed in main)
-double frac_cov = 0;
+double pval_def = 0.05;
+double pval = 0;
+
+int max_snvs_def = 4;//maximum number of SNVs allowed in left contexts (included main SNP)
+int max_snvs = 0;//maximum number of SNVs allowed in left contexts
+
+int mcov_out_def = 5;//minimum coverage required in the output events
+int mcov_out = 0;//if a letter in a cluster appears at least this number of times, then it is considered as a relevant event
+
+//automatically computed using p-value
+int max_clust_length = 60;//TODO compute automatically
+
+string input;
+uint64_t nr_reads1 = 0;
+
+bool bcr = false;
 
 bool discoSNP=true;
 
-/*
- * the two Poisson probability and cumulative functions
- */
-vector<double> Poi1;
-vector<double> Poi2;
-vector<double> Cumul1;
-vector<double> Cumul2;
 
 void help(){
 
@@ -79,16 +49,11 @@ void help(){
 	"-i <arg>    Input fasta file containing the samples' reads (REQUIRED)." << endl <<
 	"-n <arg>    Number of reads in the first sample (REQUIRED)." << endl <<
 	"-L <arg>    Length of left-context, SNP included (default: " << k_left_def << ")." << endl <<
-	"-R <arg>    Maximum length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
-	"-v <arg>    Maximum number of SNPs allowed in left context (default: " << max_snvs_def << ")."<< endl <<
-	"-m <arg>    Minimum coverage per  sample per event (default: " << mcov_out_def << "). Increasing this value  reduces" << endl <<
-	"            sensitivity and increases precision. Note: clust2snp produces a plot of the cluster" << endl <<
-	"            size distribution. You can use this plot to find a good value for -m."<< endl <<
-	"-p <arg>    p-value of discarded cluster sizes (default: " << pval_def << ")."<< endl <<
-	"-e <arg>    Tolerated error rate in clusters (default: " << err_allowed_def << ", range: [0, 0.5))." << endl <<
-	"-D          Samples are diploid (experimental! default: haploid)." << endl <<
-//	"-b          Input index files are in BCR format (default: GESA format)." << endl << endl <<
-//	"-d          Output fasta in discoSNP format (default: off)" << endl << endl<<
+	"-R <arg>    Length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
+	"-v <arg>    Maximum number of SNPs allowed in left context, SNP included (default: " << max_snvs_def << ")."<< endl <<
+	"-m <arg>    Minimum coverage per sample per event (default: " << mcov_out_def << "). We output only SNPs where" << endl <<
+	"            each of the two variants are represented at least <arg> times in the reads."<< endl <<
+	"-p <arg>    p-value of discarded cluster sizes (default: " << pval_def << ")."<< endl << endl <<
 
 	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input" << endl <<
 	"sequences, stored in a file with extension .0.egsa and with the same name of the input file" << endl <<
@@ -101,168 +66,51 @@ void help(){
 	exit(0);
 }
 
-/*
- * set of reads containing an interesting event
- *
- * read_prefixes indicates the lengths of the reads'
- * prefixes to be aligned
- *
- */
-struct event{
 
-	vector<uint64_t> read_ranks;
-	vector<uint16_t> read_prefixes;
-	vector<bool> indiv;
-	uint64_t good_lcp_t;
-	uint16_t good_lcp_s;
-	uint16_t good_lcp_len;
-	string hapl;
-	string snp;
+/*
+ * a pair of DNA segments (encoded as coordinates on reads) containing a potential variant between the
+ * two individuals
+ */
+struct candidate_variant{
+
+	//left contexts, of length k_left. Note: the variant is located at the end of the left context.
+	//in the case of SNP, it is in the last letter of the left context.
+
+	uint64_t left_context_idx_0; //index of the read containing the left context. Individual 0
+	uint64_t left_context_pos_0; //starting position of the left context in the read. Individual 0
+
+	uint64_t left_context_idx_1; //index of the read containing the left context. Individual 1
+	uint64_t left_context_pos_1; //starting position of the left context in the read. Individual 1
+
+	//right contexdts, of length k_right
+
+	uint64_t right_context_idx; //index of the read containing the left context (the same for both individuals)
+	uint64_t right_context_pos; //starting position of the left context in the read
 
 };
 
-/*
- * looks at the frequencies in counts and decides which of these events is more likely:
- *
- * - repetitive region
- * - non-repetitive region, heterozigote/homozigote alleles
- *
- * returns a string with the 4 alleles. E.g.
- *
- * - AACC means that region is not repetitive and Indiv 1 and 2 have
- *   homozigote alleles A/C
- * - AAAC means that region is not repetitive, Indiv 1 has hom. allele
- *   A and indiv. 2 has het. alleles A/C
- * - NNNN means repetitive region in either indiv1/2 (cluster too big)
- *   or cluster not sufficiently covered in one of the 2 indiv, or
- *   allele sets are equal (e.g. ACAC)
- */
-string event_type(vector<vector<unsigned int> > counts){
-
-	string out = "NNNN";
-
-	for(int indiv=0;indiv<2;++indiv){
-
-		int mcov = indiv==0?mcov1:mcov2;
-		int max_cov = indiv==0?max_cov1:max_cov2;
-
-		int cluster_size=0;
-
-		for(auto x:counts[indiv]) cluster_size+=x;
-
-		/*
-		 * first filter: too covered or too less covered event
-		 */
-		if(	cluster_size < mcov or cluster_size > max_cov){
-
-			return "NNNN";
-
-		}
-
-		/*
-		 * second filter: sum of two most frequent nucleotides must
-		 * not be too covered or too less covered
-		 *
-		 * after this procedure, max1 and max2 are the indices of the two most frequent
-		 * nucleotides
-		 */
-
-		int max1=std::distance(counts[indiv].begin(),std::max_element(counts[indiv].begin(),counts[indiv].end()));;
-		int max2=5;
-
-		int M = -1;
-		for(int b=0;b<4;++b){
-
-			if(b!=max1 and int(counts[indiv][b])>M){
-
-				M = counts[indiv][b];
-				max2 = b;
-
-			}
-
-		}
-
-		auto max_freq_1 = counts[indiv][max1]; //absolute frequency of most frequent nucleotide
-		auto max_freq_2 = max2==5 ? 0 : counts[indiv][max2]; //absolute frequency of second most frequent nucleotide
-
-		double rate = double(max_freq_2)/double(max_freq_1);
-
-		if(rate < heterozigosis_threshold){//homozigote
-
-			if(		counts[indiv][max1] < mcov or
-					counts[indiv][max1] > max_cov or
-					double(counts[indiv][max1]/double(cluster_size)<(1-err_allowed)))
-				return "NNNN";
-
-			out[indiv*2] = int_to_base(max1);
-			out[indiv*2+1] = int_to_base(max1);
-
-		}else{//heterozigote
-
-			/*
-			 * check coverage/frequencies
-			 */
-			if(	(not diploid) or
-				counts[indiv][max1]+counts[indiv][max2] < mcov or
-				counts[indiv][max1]+counts[indiv][max2] > max_cov or
-				double(counts[indiv][max1]+counts[indiv][max2])/double(cluster_size)<(1-err_allowed)
-			)
-				return "NNNN";
-
-			out[indiv*2] = int_to_base(max1);
-			out[indiv*2+1] = int_to_base(max2);
-
-		}
-
-	}
-
-	return out;
-
-}
 
 /*
- * check if the haplotipes are a valid variant
- *
- * Allowed haplotypes:
- *
- * AAGG -> both homozigote: report SNP A -> G
- * AGAA -> one homozigote and one heterozigote: report SNP G -> A
- *
- * Not allowed haplotypes:
- *
- * AAAA -> no mutations
- *
- * AGAG -> not allowed because it is more likely that they simply have the same heterozigote
- *         haplotype (AG/AG). Unlikely that they were, e.g. GAAG and first individual has 2 mutations
- *
- * AGTA -> too many mutations
- *
- * NNNN -> in this case the haplotype has already been discarded in the previous step
- *
- *
+ * a pair of DNA segment (this time encoded as strings) containing a potential variant between the
+ * two individuals.
  */
-bool variant(string hapl){
+struct variant_t{
 
-	//if haplotipe calling failed
-	if(hapl[0]=='N') return false;
+	//left contexts are of length k_left. Note: the variant is located at the end of the left context.
+	//in the case of SNP, it is in the last letter of the left context.
 
-	//if same haplotype SET: e.g. {A,C} {C,A}
-	if((hapl[0]==hapl[2] and hapl[1]==hapl[3]) or (hapl[0]==hapl[3] and hapl[1]==hapl[2])) return false;
+	string left_context_0;
+	string left_context_1;
 
-	//if number of distinct characters is not 2
-	string copy = hapl;
-	std::sort(hapl.begin(), hapl.end());
-	copy.erase(unique(copy.begin(), copy.end()), copy.end());
-	if(copy.size()!=2) return false;
+	string right_context;
 
-	return true;
+};
 
-}
 
 /*
  * get a set of reads from file given their rank.
  *
- * reads must be sorted!
+ * reads must be sorted by rank!
  *
  * output: reads and their IDs
  */
@@ -320,88 +168,6 @@ void get_reads(string fasta_path, vector<uint64_t> & read_ranks, vector<string> 
 
 }
 
-/*
- * input: range of SA corresponding to an event, plus its associated reads and IDs
- *
- * print reads aligned in the events
- */
-void print_event(event & e, vector<string> & r, string & right_context){
-
-	int max_left = 0;
-
-	cout << right_context << endl;
-
-	for(auto s : e.read_prefixes) max_left = s>max_left ? s : max_left;
-
-	for(int i = 0;i<r.size();++i){
-
-		int shift = max_left - e.read_prefixes[i];
-
-		for(int j=0;j<shift;++j) cout << " ";
-
-		for(int j=0;j<e.read_prefixes[i]-1;++j) cout << r[i][j];
-
-		cout << "|" << r[i][e.read_prefixes[i]-1] << " " << int(e.indiv[i]?1:0) << "|";
-
-		for(int j=e.read_prefixes[i];j<r[i].size();++j) cout << r[i][j];
-
-		cout << endl;
-	}
-
-	cout << endl;
-
-}
-
-
-/* find consensus in a set of strings of the same length
- * returns empty string if consensus cannot be found
- *
- * strategy: count number of bases of each type at each position of the
- * input strings. At each position, choose the base with at least min_consensus_freq
- * frequency. If no such base exists, then consensus cannot be found and procedure fails
- * (it returns empty string).
- *
- */
-string consensus(vector<string> & S){
-
-	if(S.size()==0) return "";
-
-	int len = S[0].length();
-	auto C = vector<vector<int>>(len, vector<int>(4,0));
-
-	for(auto s:S)
-		for(int i=0;i<len;++i)
-			C[i][base_to_int(s[i])]++;
-
-	string cons;
-	bool found_consensus = true;
-
-	for(int i=0;i<len;++i){
-
-		bool base_found = false;
-
-		for(int base=0;base<4;++base){
-
-			double f = double(C[i][base])/double(S.size());
-
-			if(f >= min_consensus_freq ){
-
-				cons += int_to_base(base);
-				base_found = true;
-
-			}
-
-		}
-
-		found_consensus = base_found and found_consensus;
-
-	}
-
-	if(found_consensus) return cons;
-
-	return "";
-
-}
 
 /*
  * Hamming distance on strings of same length
@@ -425,56 +191,193 @@ int distance(string & a, string & b){
 	return dH(a,b);
 }
 
+vector<candidate_variant> find_variants(vector<t_GSA> & gsa_cluster){
 
-/*
- *
- * aligns the reads and calls the event
- */
-void call_event(event & e, vector<string> & left_contexts, string & right_context, string fasta_path, ofstream & out_file){
+	vector<candidate_variant>  out;
 
-	//cluster left parts (BWT symbol included) by Hamming distance (exact match)
-	//cluster representative is longest string.
-	vector<string> I1;
-	vector<string> I2;
+	auto counts = vector<vector<unsigned int> >(2,vector<unsigned int>(4,0));
 
-	for(int i = 0;i<left_contexts.size();++i){
+	uint64_t max_lcp_val = 0;//value of max LCP in cluster
+	uint64_t max_lcp_read_idx = 0;//index of read with max LCP in cluster
+	uint64_t max_lcp_read_pos = 0;//position in read where max LCP starts
 
-		if(e.indiv[i]){//individual 2
+	for(uint64_t i=0;i<gsa_cluster.size();++i){
 
-			I2.push_back(left_contexts[i]);
+		auto e = gsa_cluster[i];
 
-		}else{//individual 1
+		//find read with max LCP
+		if(e.lcp > max_lcp_val){
 
-			I1.push_back(left_contexts[i]);
+			max_lcp_val = e.lcp;
+			max_lcp_read_idx = e.text;
+			max_lcp_read_pos = e.suff;
+
+		}
+
+		bool sample = e.text < nr_reads1 ? 0 : 1;
+		counts[sample?1:0][base_to_int(e.bwt)]++;
+
+	}
+
+	//discard cluster if max LCP is less than k_right
+	if(max_lcp_val < k_right) return out;
+
+	//compute the lists of frequent characters in indiv 1 and 2
+	vector<unsigned char> frequent_char_0;
+	vector<unsigned char> frequent_char_1;
+
+	for(int c=0;c<4;++c){
+
+		if(counts[0][c] >= mcov_out) frequent_char_0.push_back(int_to_base(c));
+		if(counts[1][c] >= mcov_out) frequent_char_1.push_back(int_to_base(c));
+
+	}
+
+	std::sort(frequent_char_0.begin(), frequent_char_0.end());
+	std::sort(frequent_char_1.begin(), frequent_char_1.end());
+
+	//filter: remove clusters that cannot reflect a variation
+	if(	frequent_char_0.size()==0 or // not covered enough
+		frequent_char_1.size()==0 or // not covered enough
+		frequent_char_0.size()>2 or // at most 2 alleles per individual
+		frequent_char_1.size()>2 or // at most 2 alleles per individual
+		frequent_char_0 == frequent_char_1 // same alleles: probably both heterozigous (and no variants)
+	){
+
+		return out;
+
+	}
+
+	for(auto c0 : frequent_char_0){
+
+		for(auto c1 : frequent_char_1){
+
+			if(c0 != c1){
+
+				//compute max length of left context in indiv. 0 and 1, on the reads whose left
+				//contexts end with c0 and c1, respectively.
+
+				uint64_t max_left_len_0 = 0;
+				uint64_t max_left_idx_0 = 0;
+				uint64_t max_left_pos_0 = 0;
+
+				uint64_t max_left_len_1 = 0;
+				uint64_t max_left_idx_1 = 0;
+				uint64_t max_left_pos_1 = 0;
+
+				for(uint64_t i=0;i<gsa_cluster.size();++i){
+
+					auto e = gsa_cluster[i];
+					bool sample = e.text < nr_reads1 ? 0 : 1;
+					uint64_t prefix_len = e.suff;
+					unsigned char ch = e.bwt;
+
+					if(prefix_len >= k_left and ch == c0 and sample == 0){
+
+						max_left_len_0 = k_left;
+						max_left_idx_0 = e.text;
+						max_left_pos_0 = e.suff-k_left;
+
+					}
+
+					if(prefix_len >= k_left and ch == c1 and sample == 1){
+
+						max_left_len_1 = k_left;
+						max_left_idx_1 = e.text;
+						max_left_pos_1 = e.suff-k_left;
+
+					}
+
+				}
+
+				if(max_left_len_0>0 and max_left_len_1>0){
+
+					out.push_back(
+						{
+
+							max_left_idx_0, max_left_pos_0,
+							max_left_idx_1, max_left_pos_1,
+							max_lcp_read_idx, max_lcp_read_pos
+
+						}
+					);
+
+				}
+
+			}
 
 		}
 
 	}
 
-	string c1 = consensus(I1);
-	string c2 = consensus(I2);
+	return out;
 
-	if(k_left==1){
+}
 
-		c1 = string();
-		c2 = string();
+/*
+ * extracts from the fasta file the DNA surrounding the variants
+ */
+vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variants, string fasta_path){
 
-		c1 += e.snp[0];
-		c2 += e.snp[1];
+	vector<variant_t>  out;
+
+	vector<uint64_t> read_ranks;
+
+	//extract the ranks of all reads we need to process
+	for(auto v : candidate_variants){
+
+		read_ranks.push_back(v.left_context_idx_0);
+		read_ranks.push_back(v.left_context_idx_1);
+		read_ranks.push_back(v.right_context_idx);
 
 	}
 
-	if(c1.length()==0 or c2.length()==0) return;
+	//sort and remove duplicates
+	std::sort( read_ranks.begin(), read_ranks.end() );
+	auto last = std::unique( read_ranks.begin(), read_ranks.end() );
+	read_ranks.erase(last, read_ranks.end());
 
-	int d = distance(c1, c2);
+	vector<string> reads;
 
-	/*
-	 * Last filters: distance between left contexts and minimum coverage
-	 */
+	//get the reads as strings
+	get_reads(fasta_path, read_ranks, reads);
 
-	if(k_left == 1 or (d <= max_snvs and I1.size()>= mcov_out and I2.size()>= mcov_out) ){
+	for(auto v:candidate_variants){
 
-		if(discoSNP){
+		uint64_t l_idx_0 = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.left_context_idx_0) );
+		uint64_t l_idx_1 = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.left_context_idx_1) );
+		uint64_t r_idx = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.right_context_idx) );
+
+		out.push_back(
+
+			{
+				reads[l_idx_0].substr(v.left_context_pos_0,k_left),
+				reads[l_idx_1].substr(v.left_context_pos_1,k_left),
+				reads[r_idx].substr(v.right_context_pos,k_right),
+			}
+
+		);
+
+	}
+
+	return out;
+
+}
+
+/*
+ * detect the type of variant (SNP/indel/discard if none) and, if not discarded, output to file the two reads per variant testifying it.
+ */
+void to_file(vector<variant_t> & output_variants, string & out_path){
+
+	ofstream out_file = ofstream(out_path);
+
+	uint64_t id_nr = 1;
+
+	for(auto v:output_variants){
+
+		auto d = distance(v.left_context_0,v.left_context_1);
+
+		if(d <= max_snvs_def){
 
 			/*
 			 * sample 1
@@ -483,19 +386,19 @@ void call_event(event & e, vector<string> & left_contexts, string & right_contex
 			string ID = ">SNP_higher_path_";
 			ID.append(to_string(id_nr));
 			ID.append("|P_1:");
-			ID.append(to_string(right_context.size()));
+			ID.append(to_string(v.right_context.size()));
 			ID.append("_");
-			ID += e.snp[0];
+			ID += v.left_context_0[v.left_context_0.size()-1];
 			ID.append("/");
-			ID += e.snp[1];
+			ID += v.left_context_1[v.left_context_1.size()-1];
 			ID.append("|");
-			ID.append("high");//TODO high/low events
+			ID.append("high");
 			ID.append("|nb_pol_1");
 
 			out_file << ID << endl;
 
-			string DNA = c1;
-			DNA.append(right_context);
+			string DNA = v.left_context_0;
+			DNA.append(v.right_context);
 			out_file << DNA << endl;
 
 			/*
@@ -505,63 +408,20 @@ void call_event(event & e, vector<string> & left_contexts, string & right_contex
 			ID = ">SNP_lower_path_";
 			ID.append(to_string(id_nr));
 			ID.append("|P_1:");
-			ID.append(to_string(right_context.size()));
+			ID.append(to_string(v.right_context.size()));
 			ID.append("_");
-			ID += e.snp[0];
+			ID += v.left_context_0[v.left_context_0.size()-1];
 			ID.append("/");
-			ID += e.snp[1];
+			ID += v.left_context_1[v.left_context_1.size()-1];
 			ID.append("|");
 			ID.append("high");
 			ID.append("|nb_pol_1");
 
 			out_file << ID << endl;
 
-			DNA = c2;
-			DNA.append(right_context);
+			DNA = v.left_context_1;
+			DNA.append(v.right_context);
 			out_file << DNA << endl;
-
-			id_nr++;
-
-		}else{
-
-			/*
-			 * sample 1
-			 */
-
-			string ID = ">id:";
-			ID.append(to_string(id_nr));
-			ID.append(" ");
-			ID.append(c1);
-			ID.append(" sample:1 ");
-			ID.append(e.hapl[0]!=e.hapl[1]?"0|1":"1|1");
-			ID.append(" cov:");
-			ID.append(to_string(I1.size()));
-			out_file << ID << endl;
-
-			string DNA = c1;
-			DNA.append(right_context);
-
-			out_file << DNA << endl;
-
-			/*
-			 * sample 2
-			 */
-
-			ID = ">id:";
-			ID.append(to_string(id_nr));
-			ID.append(" ");
-			ID.append(c2);
-			ID.append(" sample:2 ");
-			ID.append(e.hapl[2]!=e.hapl[3]?"0|1":"1|1");
-			ID.append(" cov:");
-			ID.append(to_string(I2.size()));
-			out_file << ID << endl;
-
-			DNA = c2;
-			DNA.append(right_context);
-
-			out_file << DNA << endl;
-
 
 			id_nr++;
 
@@ -572,88 +432,6 @@ void call_event(event & e, vector<string> & left_contexts, string & right_contex
 }
 
 
-
-void call_events(vector<event> & event_buffer, string fasta_path, ofstream & out_file){
-
-	cout << "Extracting reads from fasta file ... " << flush;
-	vector<uint64_t> read_ranks;
-
-	for(event e : event_buffer){
-
-		read_ranks.push_back(e.good_lcp_t);
-
-		for(auto r : e.read_ranks)
-			read_ranks.push_back(r);
-
-	}
-
-	//get read ranks, sort and remove duplicates
-	std::sort( read_ranks.begin(), read_ranks.end() );
-	auto last = std::unique( read_ranks.begin(), read_ranks.end() );
-	read_ranks.erase(last, read_ranks.end());
-
-	vector<string> reads;
-
-	get_reads(fasta_path, read_ranks, reads);
-
-	cout << "Done." << endl;
-
-	int last_perc=0;
-	int perc=0;
-
-	cout << "Processing events ... " << endl;
-
-	for(int j=0;j<event_buffer.size();++j){
-
-		auto e = event_buffer[j];
-
-		/*
-		 * get right context
-		 */
-		auto c = e.good_lcp_t;
-		auto it = std::find(read_ranks.begin(), read_ranks.end(), c);
-		assert(it != read_ranks.end());
-		auto idx = std::distance(read_ranks.begin(), it);
-
-		string right_context = reads[idx].substr(e.good_lcp_s, e.good_lcp_len);
-
-		/*
-		 * get left contexts
-		 */
-		//reads of the event
-		vector<string> left_contexts;
-
-		for(int k=0;k< e.read_ranks.size(); ++k){
-
-			auto c = e.read_ranks[k];
-			auto it = std::find(read_ranks.begin(), read_ranks.end(), c);
-			assert(it != read_ranks.end());
-			auto idx = std::distance(read_ranks.begin(), it);
-
-			int start = e.read_prefixes[k]-k_left;
-			int len = k_left;
-
-			left_contexts.push_back(reads[idx].substr(start, len));
-
-			e.read_prefixes[k] = k_left;
-
-		}
-
-		call_event(e, left_contexts, right_context, fasta_path, out_file);
-		//print_event(e, left_contexts, right_context);
-
-		perc = (100*j)/event_buffer.size();
-
-		if(perc>last_perc+4){
-
-			cout << " " << perc << "%" << endl;
-			last_perc = perc;
-
-		}
-
-	}
-
-}
 
 /*
  * scans EGSA, clusters and finds interesting clusters. In chunks, extracts the reads
@@ -667,20 +445,16 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 	ifstream clusters;
 	clusters.open(clusters_path, ios::in | ios::binary);
 
-	ofstream out_file;
-	out_file.open(out_path, ios::out);
-
-	uint64_t tot_mem = 0;//memory occupied by buffer
-	vector<event> event_buffer;
-
 	uint64_t i = 0;//position on suffix array
 
 	//read first egsa entry
 	t_GSA e = read_el(egsa, bcr);
 
+	vector<candidate_variant> candidate_variants;
+
 	while(not clusters.eof()){
 
-		//read entry in clusters
+		//1. EXTRACT EGSA CLUSTER
 
 		uint64_t start;
 		uint16_t length;
@@ -688,133 +462,48 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 		clusters.read((char*)&start, sizeof(uint64_t));
 		clusters.read((char*)&length, sizeof(uint16_t));
 
-		while(i < start){
+		if(length >= mcov_out*2 and length <= max_clust_length){
 
-			e = read_el(egsa, bcr);
-			++i;
+			while(i < start){
+
+				e = read_el(egsa, bcr);
+				++i;
+
+			}
+
+			vector<t_GSA> gsa_cluster;
+
+			while(i < start+length){
+
+				gsa_cluster.push_back(e);
+				e = read_el(egsa, bcr);
+				++i;
+
+			}
+
+			//now gsa_cluster contains a cluster in the egsa
+
+			//2. EXTRACT EVENTS FROM EGSA CLUSTER
+
+			//find potential variants
+			auto v = find_variants(gsa_cluster);
+
+			//append them to the vector of all candidate variants
+			candidate_variants.insert(candidate_variants.end(), v.begin(), v.end());
 
 		}
-
-		//now e is the start-th entry in egsa.
-
-		auto counts = vector<vector<unsigned int> >(2,vector<unsigned int>(4,0));
-
-		//extract a segment of the EGSA
-		vector<uint64_t> read_rank_segment;
-		vector<uint16_t> read_pref_segment;
-		string bwt_segment;
-		vector<bool> sample_segment;
-
-		uint16_t good_lcp_s = 0;
-		uint16_t good_lcp_len = 0;
-		uint64_t good_lcp_t = 0;
-
-		for(uint64_t l = 0;l<length; ++l){
-
-			/*
-			 * find maximum LCP
-			 */
-			if(e.lcp > good_lcp_len){
-
-				good_lcp_len = e.lcp;
-				good_lcp_t = e.text;
-				good_lcp_s = e.suff;
-
-			}
-
-			bool sample = e.text < nr_reads1 ? 0 : 1;
-
-			if(e.suff>=k_left and k_left>1){
-				bwt_segment += e.bwt;
-				read_rank_segment.push_back(e.text);
-				read_pref_segment.push_back(e.suff);
-				sample_segment.push_back(sample);
-			}
-
-			counts[sample?1:0][base_to_int(e.bwt)]++;
-
-			e = read_el(egsa, bcr);
-			++i;
-
-		}
-
-		string type = event_type(counts);
-
-		if(variant(type)){
-
-			good_lcp_len = good_lcp_len > k_right ? k_right : good_lcp_len;
-
-			string snp = "NN";
-
-			/*
-			 * extract the event from type. After this procedure,
-			 * 'snp' contains the SNP (e.g. AC for "A->C").
-			 */
-
-			if(type[0]!=type[2]){
-				snp[0]=type[0];
-				snp[1]=type[2];
-			}else if (type[0]!=type[3]){
-				snp[0]=type[0];
-				snp[1]=type[3];
-			}else if (type[1]!=type[2]){
-				snp[0]=type[1];
-				snp[1]=type[2];
-			}else if (type[1]!=type[3]){
-				snp[0]=type[1];
-				snp[1]=type[3];
-			}
-
-			vector<uint64_t> read_rank_segment_filt;
-			vector<uint16_t> read_pref_segment_filt;
-			vector<bool> sample_segment_filt;
-
-			for(uint64_t l = 0;l<read_rank_segment.size(); ++l){
-
-				if((sample_segment[l]==0 and bwt_segment[l]==snp[0]) or (sample_segment[l]==1 and bwt_segment[l]==snp[1])){
-					read_rank_segment_filt.push_back(read_rank_segment[l]);
-					read_pref_segment_filt.push_back(read_pref_segment[l]);
-					sample_segment_filt.push_back(sample_segment[l]);
-				}
-
-			}
-
-			event_buffer.push_back({read_rank_segment_filt,read_pref_segment_filt,sample_segment_filt, good_lcp_t, good_lcp_s, good_lcp_len, type, snp});
-
-			//max memory that we will use now and in later steps TODO
-			/*tot_mem +=  2*read_rank_segment.size()*sizeof(uint64_t) +
-						read_pref_segment.size()*sizeof(uint16_t) +
-						2*read_rank_segment.size()*k_left;*/
-
-		}
-
-		/*if(tot_mem > MAX_MEM*1048576){
-
-			cout << "Emptying event buffer. " << event_buffer.size() << " events detected" <<endl;
-
-			//extract reads, perform alignments, call events, and store them to file
-			call_events(event_buffer, fasta_path, out_file);
-
-			//clear buffer
-			event_buffer = vector<event>();
-			tot_mem = 0;
-
-		}*/
 
 	}
 
-	//if there are events left to process
-	if(event_buffer.size()!=0){
+	//3. EXTRACT READ SEGMENTS FROM FILE
+	//extract from file the interesting parts of the reads and form the variants to be outputted
 
-		cout << "Emptying event buffer. " << event_buffer.size() << " events detected" <<endl;
+	vector<variant_t> output_variants = extract_variants(candidate_variants, fasta_path);
 
-		//extract reads, perform alignments, call events, and store them to file
-		call_events(event_buffer, fasta_path, out_file);
+	//4. SAVE TO OUTPUT FILE THE VARIANTS
 
-	}
+	to_file(output_variants, out_path);
 
-
-	out_file.close();
 	clusters.close();
 	egsa.close();
 
@@ -823,33 +512,16 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 /*
  * compute coverage statistics
  */
-void statistics(string & egsa_path, string & clusters_path){
-
-	ifstream egsa;
-	egsa.open(egsa_path, ios::in | ios::binary);
+void statistics(string & clusters_path){
 
 	ifstream clusters;
 	clusters.open(clusters_path, ios::in | ios::binary);
 
-	uint64_t i = 0;//position on suffix array
+	//init with max cluster length 1000
+	uint64_t MAX_C_LEN = 1000;
+	auto clust_len_freq = vector<uint64_t>(MAX_C_LEN,0);
 
-	vector<unsigned long> cov_1 = vector<unsigned long>(200, 0);
-	vector<unsigned long> cov_2 = vector<unsigned long>(200, 0);
-	vector<unsigned long> cov = vector<unsigned long>(200, 0);
-
-	//read first egsa entry
-	t_GSA e = read_el(egsa, bcr);
-
-	uint64_t n_bases = 0;//number of nucleotides
-
-	n_bases += 	e.bwt=='A' or e.bwt=='a' or
-				e.bwt=='C' or e.bwt=='c' or
-				e.bwt=='G' or e.bwt=='g' or
-				e.bwt=='T' or e.bwt=='t';
-
-	uint64_t tot1=0;
-	uint64_t tot2=0;
-
+	uint64_t max_len = 0;
 
 	while(not clusters.eof()){
 
@@ -861,252 +533,47 @@ void statistics(string & egsa_path, string & clusters_path){
 		clusters.read((char*)&start, sizeof(uint64_t));
 		clusters.read((char*)&length, sizeof(uint16_t));
 
-		while(i < start){
+		if(length <= MAX_C_LEN) clust_len_freq[length]++;
 
-			e = read_el(egsa, bcr);
-
-			n_bases += 	e.bwt=='A' or e.bwt=='a' or
-						e.bwt=='C' or e.bwt=='c' or
-						e.bwt=='G' or e.bwt=='g' or
-						e.bwt=='T' or e.bwt=='t';
-			++i;
-
-		}
-
-		int cov1_cnt = 0;
-		int cov2_cnt = 0;
-
-
-		for(uint64_t l = 0;l<length; ++l){
-
-			bool sample = e.text < nr_reads1 ? 0 : 1;
-
-			if(sample) cov2_cnt++;
-			else cov1_cnt++;
-
-			e = read_el(egsa, bcr);
-
-			n_bases += 	e.bwt=='A' or e.bwt=='a' or
-						e.bwt=='C' or e.bwt=='c' or
-						e.bwt=='G' or e.bwt=='g' or
-						e.bwt=='T' or e.bwt=='t';
-
-			++i;
-
-		}
-
-		/*
-		 * cut clusters that contain less than 3 elements per sample (noise)
-		 */
-		if(cov1_cnt+cov2_cnt<cov.size()) cov[cov1_cnt+cov2_cnt]++;
-		if(cov1_cnt<cov_1.size()) cov_1[cov1_cnt]++;
-		if(cov2_cnt<cov_2.size()) cov_2[cov2_cnt]++;
+		max_len = length>max_len ? length : max_len;
 
 	}
 
-	unsigned long  max=0;
-	for(auto x:cov_1) max=x>max?x:max;
-	for(auto x:cov_2) max=x>max?x:max;
+	uint64_t max = 0;
+	for(int i=0;i<MAX_C_LEN;++i) max = clust_len_freq[i]*i > max ? clust_len_freq[i]*i : max;
 
-	unsigned long max2=0;
-	for(int i=0;i<cov_1.size();++i) max2=cov_1[i]*i>max2?cov_1[i]*i:max2;
-	for(int i=0;i<cov_2.size();++i) max2=cov_2[i]*i>max2?cov_2[i]*i:max2;
+	cout << "\nDistribution of base coverage: "<< endl;
+	cout << "\ncluster length\t# bases in a cluster with this length" << endl;
+	for(int i=0;i<=max_len;++i){
 
-	int scale = max/100;
-	int scale2 = max2/100;
+		cout << i << "\t" << flush;
+		for(uint64_t j=0;j<(100*clust_len_freq[i]*i)/max;++j) cout << "-" << flush;
+		cout << "   " << clust_len_freq[i]*i << endl;
 
-	cout << "\nSample 1, distribution of cluster size: "<< endl;
-	cout << "\ncoverage\t# clusters with this coverage" << endl;
-	for(int i=0;i<cov_1.size() and cov_1[i] > max/200 ;++i){
-
-		if(i%1==0){
-			cout << i << "\t" << flush;
-			for(int j=0;j<cov_1[i]/scale;++j) cout << "-" << flush;
-			cout << "   " << cov_1[i] << endl;
-		}
 
 	}
 
-
-	cout << "\nSample 2, distribution of cluster size: "<< endl;
-	cout << "\ncoverage\t# clusters with this coverage" << endl;
-	for(int i=0;i<cov_2.size()  and cov_2[i] > max/200;++i){
-
-		if(i%1==0){
-			cout << i  << "\t" << flush;
-			for(int j=0;j<cov_2[i]/scale;++j) cout << "-" << flush;
-			cout << "   " << cov_2[i] << endl;
-		}
-
-	}
-
-
-	cout << "\nSample 1, distribution of base coverage: "<< endl;
-	cout << "\ncoverage\t# bases in a cluster with this coverage" << endl;
-	for(int i=0;i<cov_1.size() and cov_1[i] > max/200 ;++i){
-
-		if(i%1==0){
-			cout << i << "\t" << flush;
-			for(unsigned long j=0;j<(cov_1[i]*i)/scale2;++j) cout << "-" << flush;
-			cout << "   " << cov_1[i]*i << endl;
-		}
-
-	}
-
-
-	cout << "\nSample 2, distribution of base coverage: "<< endl;
-	cout << "\ncoverage\t# bases in a cluster with this coverage" << endl;
-	for(int i=0;i<cov_2.size() and cov_2[i] > max/200 ;++i){
-
-		if(i%1==0){
-			cout << i << "\t" << flush;
-			for(unsigned long j=0;j<(cov_2[i]*i)/scale2;++j) cout << "-" << flush;
-			cout << "   " << cov_2[i]*i << endl;
-		}
-
-	}
-
-
-	/*
-	 * now cut the noise
-	 */
-
-	/*
-	 * Check if there is a peak in the first 2 bases (noise)
-	 *
-
-	bool peak_noise1=cov_1[0]>cov_1[1];
-	bool peak_noise2=cov_2[0]>cov_2[1];
-
-	for(int i=1;i<=2 and i<cov_1.size();++i)
-		if(cov_1[i] >= cov_1[i-1] and cov_1[i] > cov_1[i+1]){
-			cout << i << endl;
-			peak_noise1=true;
-		}
-
-	for(int i=1;i<=2 and i<cov_2.size();++i)
-		if(cov_2[i] >= cov_2[i-1] and cov_2[i] > cov_2[i+1])
-			peak_noise2=true;
-
-	int local_min1=0;
-	int local_min2=0;
-
-	if(not peak_noise1){
-		local_min1 = mcov_out;
-	}else{
-
-		bool found = false;
-		i=1;
-		while(not found and i < cov_1.size()-1){
-			if(cov_1[i] <= cov_1[i-1] and cov_1[i] < cov_1[i+1]){
-				found=true;
-				local_min1=i;
-			}
-			++i;
-		}
-
-	}
-
-	if(not peak_noise2){
-		local_min2 = mcov_out;
-	}else{
-		i=1;
-		bool found=false;
-		while(not found and i < cov_2.size()-1){
-			if(cov_2[i] <= cov_2[i-1] and cov_2[i] < cov_2[i+1]){
-				found=true;
-				local_min2=i;
-			}
-			++i;
-		}
-	}
-
-	local_min1 = local_min1>4?local_min1-1:local_min1;
-	local_min2 = local_min2>4?local_min2-1:local_min2;
-	 */
-
-
-	int local_min1 = mcov_out;
-	int local_min2 = mcov_out;
-
-	for(i=0;i<local_min1;++i) cov_1[i]=0;
-	for(i=0;i<local_min2;++i) cov_2[i]=0;
-
-	uint64_t tot=0;
-
-	Poi1 = vector<double>(cov_1.size());
-	Poi2 = vector<double>(cov_2.size());
-	Cumul1 = vector<double>(cov_1.size());
-	Cumul2 = vector<double>(cov_2.size());
-
-	for(auto x:cov_1) tot1+=x;
-	for(auto x:cov_2) tot2+=x;
-	for(auto x:cov) tot+=x;
-
-	for(int i=1;i<cov_1.size();++i){
-		Poi1[i] = double(cov_1[i])/double(tot1);
-		Cumul1[i] = Cumul1[i-1] + Poi1[i];
-	}
-	for(int i=1;i<cov_2.size();++i){
-		Poi2[i] = double(cov_2[i])/double(tot2);
-		Cumul2[i] = Cumul2[i-1] + Poi2[i];
-	}
-
-	max_cov1=0;
-	max_cov2=0;
-	mcov1=0;
-	mcov2=0;
-
-	int mean1 = std::distance(cov_1.begin(),std::max_element(cov_1.begin(),cov_1.end()));
-	int mean2 = std::distance(cov_2.begin(),std::max_element(cov_2.begin(),cov_2.end()));
-
-	/*
-	 * compute tails of Poisson distributions
-	 */
-
-	max_cov1 = cov_1.size()-1;
-	for(int i=cov_1.size()-1; i>=0 ;--i)
-		if(1-Cumul1[i] <= pval/2) max_cov1 = i;
-
-	max_cov2 = cov_2.size()-1;
-	for(int i=cov_2.size()-1; i>=0 ;--i)
-		if(1-Cumul2[i] <= pval/2) max_cov2 = i;
-
-	for(int i=0; i<cov_1.size() ;++i)
-		if(Cumul1[i] <= pval/2) mcov1 = i;
-
-	for(int i=0; i<cov_2.size() ;++i)
-		if(Cumul2[i] <= pval/2) mcov2 = i;
-
-	mcov1 = mcov1<local_min1?local_min1:mcov1;
-	mcov2 = mcov2<local_min2?local_min2:mcov2;
-
-	cout << "\nCluster sizes allowed in the two samples: [" << mcov1 << "," << max_cov1 << "] and [" << mcov2 << "," << max_cov2 << "]" << endl;
+	cout << "\nCluster sizes allowed: [" << mcov_out*2 << "," << max_clust_length << "]" << endl;
 
 	clusters.close();
-	egsa.close();
 
 }
 
 
 int main(int argc, char** argv){
 
-
 	srand(time(NULL));
 
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:e:p:v:L:R:m:D")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m")) != -1){
 		switch (opt){
 			case 'h':
 				help();
 			break;
 			case 'b':
 				bcr = true;
-			break;
-			case 'D':
-				diploid = true;
 			break;
 			case 'i':
 				input = string(optarg);
@@ -1128,10 +595,6 @@ int main(int argc, char** argv){
 				k_right = atoi(optarg);
 				//cout << "m = " << m << "\n";
 			break;
-			case 'e':
-				err_allowed = atof(optarg);
-				//cout << "k = " << M << "\n";
-			break;
 			case 'p':
 				pval = atof(optarg);
 				//cout << "k = " << M << "\n";
@@ -1145,25 +608,15 @@ int main(int argc, char** argv){
 		}
 	}
 
-	MAX_MEM = MAX_MEM==0?MAX_MEM_def:MAX_MEM;
-	err_allowed = (err_allowed==0?err_allowed_def:err_allowed);
 	k_left = k_left==0?k_left_def:k_left;
 	k_right = k_right==0?k_right_def:k_right;
 	pval = pval==0?pval_def:pval;
-	read_len = read_len==0?read_len_def:read_len;
 	max_snvs = max_snvs==0?max_snvs_def:max_snvs;
 	mcov_out = mcov_out==0?mcov_out_def:mcov_out;
 
 	if(pval <= 0 or pval > 1){
 
 		cout << "Error: argument of -p must be in (0,1]" << endl;
-		help();
-
-	}
-
-	if(err_allowed < 0 or err_allowed >= 0.5){
-
-		cout << "Error: argument of -f must be in [0,0.5)" << endl;
 		help();
 
 	}
@@ -1191,17 +644,9 @@ int main(int argc, char** argv){
 
 	cout << "This is clust2snp." << endl <<
 			"Input index file: " << egsa_path << endl <<
-			"Tolerated error rate : " << err_allowed << endl <<
 			"p-value : " << pval << endl <<
 			"Left-extending GSA ranges by " << k_left << " bases." << endl <<
 			"Right context length: at most " << k_right << " bases." << endl;
-
-	if(diploid)
-		cout << "Diploid samples" << endl;
-	else
-		cout << "Haploid samples" << endl;
-
-	frac_cov = (1-min_k/read_len)*pow(1-err_rate,min_k);
 
 	string clusters_path = input;
 	clusters_path.append(".clusters");
@@ -1227,7 +672,7 @@ int main(int argc, char** argv){
 
 	cout << "Output events will be stored in " << filename_out << endl;
 
-	statistics(egsa_path, clusters_path);
+	statistics(clusters_path);
 	find_events(egsa_path, clusters_path, input, filename_out);
 
 	cout << "Done. " <<endl;
