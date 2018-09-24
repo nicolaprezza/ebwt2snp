@@ -572,6 +572,9 @@ void statistics(string & clusters_path){
 
 int main(int argc, char** argv){
 
+	cout << "Tool under development. Try later!" << endl;
+	exit(0);
+
 	srand(time(NULL));
 
 	if(argc < 3) help();
