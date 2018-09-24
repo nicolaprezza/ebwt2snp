@@ -373,6 +373,7 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 
 	uint64_t id_nr = 1;
 
+	cout << "Saving SNVs to file ... " << flush;
 	for(auto v:output_variants){
 
 		auto d = distance(v.left_context_0,v.left_context_1);
@@ -428,6 +429,8 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 		}
 
 	}
+	cout << "done." << endl;
+
 
 }
 
@@ -451,6 +454,8 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 	t_GSA e = read_el(egsa, bcr);
 
 	vector<candidate_variant> candidate_variants;
+
+	cout << "Filtering relevant clusters ... " << flush;
 
 	while(not clusters.eof()){
 
@@ -494,6 +499,8 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 		}
 
 	}
+
+	cout << "Done. "  << candidate_variants.size() << " potential variants detected (some might be detected twice: on fw and rev strands)" << endl;
 
 	//3. EXTRACT READ SEGMENTS FROM FILE
 	//extract from file the interesting parts of the reads and form the variants to be outputted
