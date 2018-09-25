@@ -31,7 +31,8 @@ int mcov_out_def = 5;//minimum coverage required in the output events
 int mcov_out = 0;//if a letter in a cluster appears at least this number of times, then it is considered as a relevant event
 
 //automatically computed using p-value
-int max_clust_length = 120;//TODO compute automatically
+int max_clust_length_def = 60;
+int max_clust_length = 0;
 
 string input;
 uint64_t nr_reads1 = 0;
@@ -52,8 +53,10 @@ void help(){
 	"-R <arg>    Length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
 	"-v <arg>    Maximum number of SNPs allowed in left context, SNP included (default: " << max_snvs_def << ")."<< endl <<
 	"-m <arg>    Minimum coverage per sample per event (default: " << mcov_out_def << "). We output only SNPs where" << endl <<
-	"            each of the two variants are represented at least <arg> times in the reads."<< endl <<
-	"-p <arg>    p-value of discarded cluster sizes (default: " << pval_def << ")."<< endl << endl <<
+	"            each of the two variants are represented at least <arg> times in the reads. The minimum cluster length" << endl <<
+	"            is automatically set as 2*<arg>."<< endl <<
+	//"-p <arg>    p-value of discarded cluster sizes (default: " << pval_def << ")."<< endl << endl <<
+	"-M <arg>    maximum cluster length (default: " << max_clust_length_def << ")."<< endl << endl <<
 
 	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input" << endl <<
 	"sequences, stored in a file with extension .0.egsa and with the same name of the input file" << endl <<
@@ -236,12 +239,19 @@ vector<candidate_variant> find_variants(vector<t_GSA> & gsa_cluster){
 	std::sort(frequent_char_0.begin(), frequent_char_0.end());
 	std::sort(frequent_char_1.begin(), frequent_char_1.end());
 
+	//all variations observed in cluster
+	auto all_chars = frequent_char_0;
+	all_chars.insert(all_chars.begin(), frequent_char_1.begin(), frequent_char_1.end());
+	std::sort( all_chars.begin(), all_chars.end() );
+	all_chars.erase(std::unique( all_chars.begin(), all_chars.end() ), all_chars.end());
+
 	//filter: remove clusters that cannot reflect a variation
 	if(	frequent_char_0.size()==0 or // not covered enough
 		frequent_char_1.size()==0 or // not covered enough
 		frequent_char_0.size()>2 or // at most 2 alleles per individual
 		frequent_char_1.size()>2 or // at most 2 alleles per individual
-		frequent_char_0 == frequent_char_1 // same alleles: probably both heterozigous (and no variants)
+		frequent_char_0 == frequent_char_1 or // same alleles: probably both heterozigous (and no variants)
+		all_chars.size() > 3	//4 or more distinct frequent characters in the cluster
 	){
 
 		return out;
@@ -529,6 +539,7 @@ void statistics(string & clusters_path){
 	auto clust_len_freq = vector<uint64_t>(MAX_C_LEN,0);
 
 	uint64_t max_len = 0;
+	uint64_t n_bases = 0;	//number of bases in clusters
 
 	while(not clusters.eof()){
 
@@ -539,6 +550,8 @@ void statistics(string & clusters_path){
 
 		clusters.read((char*)&start, sizeof(uint64_t));
 		clusters.read((char*)&length, sizeof(uint16_t));
+
+		n_bases += length;
 
 		if(length <= MAX_C_LEN){
 
@@ -580,7 +593,7 @@ int main(int argc, char** argv){
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:M:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
@@ -590,28 +603,25 @@ int main(int argc, char** argv){
 			break;
 			case 'i':
 				input = string(optarg);
-				//cout << "input = " << input << "\n";
 			break;
 			case 'n':
 				nr_reads1 = atoi(optarg);
-				//cout << "k = " << k << "\n";
 			break;
 			case 'm':
 				mcov_out = atoi(optarg);
-				//cout << "m = " << m << "\n";
+			break;
+			case 'M':
+				max_clust_length = atoi(optarg);
 			break;
 			case 'L':
 				k_left = atoi(optarg);
-				//cout << "k = " << k << "\n";
 			break;
 			case 'R':
 				k_right = atoi(optarg);
-				//cout << "m = " << m << "\n";
 			break;
-			case 'p':
-				pval = atof(optarg);
-				//cout << "k = " << M << "\n";
-			break;
+			//case 'p':
+			//	pval = atof(optarg);
+			//break;
 			case 'v':
 				max_snvs = atoi(optarg);
 			break;
@@ -621,18 +631,19 @@ int main(int argc, char** argv){
 		}
 	}
 
+	max_clust_length = max_clust_length==0?max_clust_length_def:max_clust_length;
 	k_left = k_left==0?k_left_def:k_left;
 	k_right = k_right==0?k_right_def:k_right;
-	pval = pval==0?pval_def:pval;
+	//pval = pval==0?pval_def:pval;
 	max_snvs = max_snvs==0?max_snvs_def:max_snvs;
 	mcov_out = mcov_out==0?mcov_out_def:mcov_out;
 
-	if(pval <= 0 or pval > 1){
+	/*if(pval <= 0 or pval > 1){
 
 		cout << "Error: argument of -p must be in (0,1]" << endl;
 		help();
 
-	}
+	}*/
 
 	if(input.compare("")==0 or nr_reads1 == 0) help();
 
@@ -657,7 +668,7 @@ int main(int argc, char** argv){
 
 	cout << "This is clust2snp." << endl <<
 			"Input index file: " << egsa_path << endl <<
-			"p-value : " << pval << endl <<
+			//"p-value : " << pval << endl <<
 			"Left-extending GSA ranges by " << k_left << " bases." << endl <<
 			"Right context length: at most " << k_right << " bases." << endl;
 
