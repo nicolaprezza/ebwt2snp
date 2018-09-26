@@ -24,7 +24,7 @@ int k_right = 0;//extract k_right nucleotides from right of suffix array range, 
 double pval_def = 0.05;
 double pval = 0;
 
-int max_snvs_def = 4;//maximum number of SNVs allowed in left contexts (included main SNP)
+int max_snvs_def = 3;//maximum number of SNVs allowed in left contexts (included main SNP)
 int max_snvs = 0;//maximum number of SNVs allowed in left contexts
 
 int mcov_out_def = 5;//minimum coverage required in the output events
@@ -33,6 +33,10 @@ int mcov_out = 0;//if a letter in a cluster appears at least this number of time
 //automatically computed using p-value
 int max_clust_length_def = 60;
 int max_clust_length = 0;
+
+//max indel length. If 0, indels are disabled.
+int max_gap = 0;
+int max_gap_def = 5;
 
 string input;
 uint64_t nr_reads1 = 0;
@@ -51,7 +55,8 @@ void help(){
 	"-n <arg>    Number of reads in the first sample (REQUIRED)." << endl <<
 	"-L <arg>    Length of left-context, SNP included (default: " << k_left_def << ")." << endl <<
 	"-R <arg>    Length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
-	"-v <arg>    Maximum number of SNPs allowed in left context, SNP included (default: " << max_snvs_def << ")."<< endl <<
+	"-g <arg>    Maximum allowed gap length in indel (default: " << max_gap_def << "). If 0, indels are disabled."<< endl <<
+	"-v <arg>    Maximum number of SNPs allowed in left context, main SNV excluded (default: " << max_snvs_def << ")."<< endl <<
 	"-m <arg>    Minimum coverage per sample per event (default: " << mcov_out_def << "). We output only SNPs where" << endl <<
 	"            each of the two variants are represented at least <arg> times in the reads. The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
@@ -173,25 +178,86 @@ void get_reads(string fasta_path, vector<uint64_t> & read_ranks, vector<string> 
 
 
 /*
- * Hamming distance on strings of same length
+ * Hamming distance on strings. If length is different, align them on the right and discard extra chars on left.
  */
 int dH(string & a, string & b){
 
-	assert(a.size()==b.size());
+	int len = a.size() < b.size() ? a.size() : b.size();
 
 	int d=0;
 
-	for(int i=0;i<a.size();++i) d += a[i]!=b[i];
+	for(int i=0;i<len;++i){
+
+		d += a[a.size()-i-1]!=b[b.size()-i-1];
+
+	}
 
 	return d;
 
 }
 
 /*
+ * given two strings of the same length:
+ *
+ * 	1. find if there is an indel at the rightmost end (of max length max_gap)
+ * 	2. skip the indel and count number of mismatches in the remaining part
+ *
+ *
+ * 	returns a pair <D,L>, where:
+ *
+ * 	- D is the number of mismatches before the indel, and
+ * 	- L is the indel length. This value is positive if the insertion is on a, and is negative if it is on b
+ *
+ *	best alignment is the one with minimum score D + |L|
+ *
+ * 	examples:
+ *
+ * 	- distance(ACCTACTG, TTACTTAC) = <1,2>
+ * 	- distance(TTACTTAC, ACCTACTG) = <1,-2>
  *
  */
-int distance(string & a, string & b){
-	return dH(a,b);
+pair<int,int> distance(string & a, string & b){
+
+	auto dist_ab = vector<int>(max_gap,0);//insert in a
+	auto dist_ba = vector<int>(max_gap,0);//insert in b
+	auto dist_no_indel = dH(a,b);
+
+	//try insert in a: remove characters from the right of a
+	for(int i = 1; i<max_gap+1;++i){
+
+		string a1 = a.substr(0,a.length()-i);
+		dist_ab[i-1] = dH(a1,b) + i;
+
+	}
+
+	//try insert in b: remove characters from the right of b
+	for(int i = 1; i<max_gap+1;++i){
+
+		string b1 = b.substr(0,b.length()-i);
+		dist_ab[i-1] = dH(a,b1) + i;
+
+	}
+
+	int min_ab_idx = std::distance(dist_ab.begin(), std::min_element(dist_ab.begin(),dist_ab.end()));
+	int min_ba_idx = std::distance(dist_ba.begin(), std::min_element(dist_ba.begin(),dist_ba.end()));
+
+	if(dist_no_indel < dist_ab[min_ab_idx] and  dist_no_indel < dist_ba[min_ba_idx]){
+
+		//no indels
+		return {dist_no_indel,0};
+
+	}else if(dist_ab[min_ab_idx] < dist_ba[min_ba_idx]){
+
+		//insert of length min_ab_idx+1 in a
+		return {dist_ab[min_ab_idx] - (min_ab_idx+1), min_ab_idx+1};
+
+	}
+
+	//else
+
+	//insert of length min_ba_idx+1 in b
+	return {dist_ba[min_ba_idx] - (min_ba_idx+1), -(min_ba_idx+1)};
+
 }
 
 vector<candidate_variant> find_variants(vector<t_GSA> & gsa_cluster){
@@ -388,49 +454,117 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 
 		auto d = distance(v.left_context_0,v.left_context_1);
 
-		if(d <= max_snvs_def){
+		if(d.first <= max_snvs_def){
 
 			/*
 			 * sample 1
 			 */
 
-			string ID = ">SNP_higher_path_";
+			string ID;
+
+			if(d.second != 0){
+
+				ID =  ">INDEL_higher_path_";
+
+			}else{
+
+				ID =  ">SNP_higher_path_";
+
+			}
+
 			ID.append(to_string(id_nr));
 			ID.append("|P_1:");
 			ID.append(to_string(v.right_context.size()));
 			ID.append("_");
-			ID += v.left_context_0[v.left_context_0.size()-1];
-			ID.append("/");
-			ID += v.left_context_1[v.left_context_1.size()-1];
+
+			string snv_type;
+
+			if(d.second==0){
+
+				snv_type += v.left_context_0[v.left_context_0.size()-1];
+				snv_type.append("/");
+				snv_type += v.left_context_1[v.left_context_1.size()-1];
+
+			}else if(d.second>0){//insert of length d.second in v.left_context_0
+
+				snv_type.append(v.left_context_0.substr(v.left_context_0.size()-d.second));
+				snv_type.append("/");
+
+			}else{//insert of length -d.second in v.left_context_1
+
+				snv_type.append("/");
+				snv_type.append(v.left_context_1.substr(v.left_context_1.size() - (-d.second)));
+
+			}
+
+			ID.append(snv_type);
 			ID.append("|");
 			ID.append("high");
 			ID.append("|nb_pol_1");
 
 			out_file << ID << endl;
 
-			string DNA = v.left_context_0;
+			string DNA;
+
+			if(d.second==0){
+
+				DNA = v.left_context_0;
+
+			}else if(d.second>0){//insert of length d.second in v.left_context_0
+
+				DNA = v.left_context_0;
+
+			}else{//insert of length -d.second in v.left_context_1
+
+				DNA = v.left_context_0.substr(-d.second);
+
+			}
+
 			DNA.append(v.right_context);
+
 			out_file << DNA << endl;
 
 			/*
 			 * sample 2
 			 */
 
-			ID = ">SNP_lower_path_";
+			if(d.second != 0){
+
+				ID =  ">INDEL_lower_path_";
+
+			}else{
+
+				ID =  ">SNP_lower_path_";
+
+			}
+
 			ID.append(to_string(id_nr));
 			ID.append("|P_1:");
 			ID.append(to_string(v.right_context.size()));
 			ID.append("_");
-			ID += v.left_context_0[v.left_context_0.size()-1];
-			ID.append("/");
-			ID += v.left_context_1[v.left_context_1.size()-1];
+			ID.append(snv_type);
 			ID.append("|");
 			ID.append("high");
 			ID.append("|nb_pol_1");
 
 			out_file << ID << endl;
 
-			DNA = v.left_context_1;
+			DNA = "";
+
+			if(d.second==0){
+
+				DNA = v.left_context_1;
+
+			}else if(d.second>0){//insert of length d.second in v.left_context_0
+
+				DNA = v.left_context_1.substr(d.second);
+
+			}else{//insert of length -d.second in v.left_context_1
+
+				DNA = v.left_context_1;
+
+			}
+
 			DNA.append(v.right_context);
 			out_file << DNA << endl;
 
@@ -585,15 +719,12 @@ void statistics(string & clusters_path){
 
 int main(int argc, char** argv){
 
-	cout << "Tool under development. Try later!" << endl;
-	exit(0);
-
 	srand(time(NULL));
 
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:M:")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:M:g:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
@@ -609,6 +740,9 @@ int main(int argc, char** argv){
 			break;
 			case 'm':
 				mcov_out = atoi(optarg);
+			break;
+			case 'g':
+				max_gap = atoi(optarg);
 			break;
 			case 'M':
 				max_clust_length = atoi(optarg);
@@ -631,6 +765,7 @@ int main(int argc, char** argv){
 		}
 	}
 
+	max_gap = max_gap==0?max_gap_def:max_gap;
 	max_clust_length = max_clust_length==0?max_clust_length_def:max_clust_length;
 	k_left = k_left==0?k_left_def:k_left;
 	k_right = k_right==0?k_right_def:k_right;
