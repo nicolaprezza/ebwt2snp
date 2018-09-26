@@ -28,9 +28,8 @@ int max_snvs_def = 3;//maximum number of SNVs allowed in left contexts (included
 int max_snvs = 0;//maximum number of SNVs allowed in left contexts
 
 int mcov_out_def = 5;//minimum coverage required in the output events
-int mcov_out = 0;//if a letter in a cluster appears at least this number of times, then it is considered as a relevant event
+int mcov_out = 0;//if a SNV is testified at least this number of times, then it is considered as a relevant event
 
-//automatically computed using p-value
 int max_clust_length_def = 60;
 int max_clust_length = 0;
 
@@ -197,7 +196,7 @@ int dH(string & a, string & b){
 }
 
 /*
- * given two strings of the same length:
+ * given two strings a, b:
  *
  * 	1. find if there is an indel at the rightmost end (of max length max_gap)
  * 	2. skip the indel and count number of mismatches in the remaining part
@@ -208,7 +207,7 @@ int dH(string & a, string & b){
  * 	- D is the number of mismatches before the indel, and
  * 	- L is the indel length. This value is positive if the insertion is on a, and is negative if it is on b
  *
- *	best alignment is the one with minimum score D + |L|
+ *	best alignment is the one with minimum distance D + |L|
  *
  * 	examples:
  *
@@ -221,6 +220,9 @@ pair<int,int> distance(string & a, string & b){
 	auto dist_ab = vector<int>(max_gap,0);//insert in a
 	auto dist_ba = vector<int>(max_gap,0);//insert in b
 	auto dist_no_indel = dH(a,b);
+
+	assert(max_gap<=a.length());
+	assert(max_gap<=b.length());
 
 	//try insert in a: remove characters from the right of a
 	for(int i = 1; i<max_gap+1;++i){
@@ -668,12 +670,11 @@ void statistics(string & clusters_path){
 	ifstream clusters;
 	clusters.open(clusters_path, ios::in | ios::binary);
 
-	//init with max cluster length 1000
-	uint64_t MAX_C_LEN = 200;
-	auto clust_len_freq = vector<uint64_t>(MAX_C_LEN,0);
+	//init with max cluster length 200
+	uint64_t MAX_C_LEN = 10000;
+	auto clust_len_freq = vector<uint64_t>(MAX_C_LEN+1,0);
 
 	uint64_t max_len = 0;
-	uint64_t n_bases = 0;	//number of bases in clusters
 
 	while(not clusters.eof()){
 
@@ -685,19 +686,21 @@ void statistics(string & clusters_path){
 		clusters.read((char*)&start, sizeof(uint64_t));
 		clusters.read((char*)&length, sizeof(uint16_t));
 
-		n_bases += length;
-
 		if(length <= MAX_C_LEN){
 
 			clust_len_freq[length]++;
 			max_len = length>max_len ? length : max_len;
+
+		}else{
+
+			cout << "\nWARNING: detected cluster of length " << length << endl;
 
 		}
 
 	}
 
 	uint64_t max = 0;
-	for(int i=0;i<MAX_C_LEN;++i) max = clust_len_freq[i]*i > max ? clust_len_freq[i]*i : max;
+	for(int i=1;i<=MAX_C_LEN;++i) max = clust_len_freq[i]*i > max ? clust_len_freq[i]*i : max;
 
 	cout << "\nDistribution of base coverage: "<< endl;
 	cout << "\ncluster length\t# bases in a cluster with this length" << endl;
