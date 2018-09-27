@@ -694,10 +694,6 @@ void statistics(string & clusters_path){
 			clust_len_freq[length]++;
 			max_len = length>max_len ? length : max_len;
 
-		}else{
-
-			cout << "\nWARNING: detected cluster of length " << length << endl;
-
 		}
 
 	}
