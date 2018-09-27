@@ -35,7 +35,7 @@ int max_clust_length = 0;
 
 //max indel length. If 0, indels are disabled.
 int max_gap = 0;
-int max_gap_def = 5;
+int max_gap_def = 10;
 
 string input;
 uint64_t nr_reads1 = 0;
@@ -196,7 +196,7 @@ int dH(string & a, string & b){
 }
 
 /*
- * given two strings a, b:
+ * given two strings a, b of same length:
  *
  * 	1. find if there is an indel at the rightmost end (of max length max_gap)
  * 	2. skip the indel and count number of mismatches in the remaining part
@@ -217,12 +217,15 @@ int dH(string & a, string & b){
  */
 pair<int,int> distance(string & a, string & b){
 
+	assert(a.length()==b.length());
+
 	auto dist_ab = vector<int>(max_gap,0);//insert in a
 	auto dist_ba = vector<int>(max_gap,0);//insert in b
 	auto dist_no_indel = dH(a,b);
 
+	if(max_gap==0) return {dist_no_indel,0};
+
 	assert(max_gap<=a.length());
-	assert(max_gap<=b.length());
 
 	//try insert in a: remove characters from the right of a
 	for(int i = 1; i<max_gap+1;++i){
@@ -236,7 +239,7 @@ pair<int,int> distance(string & a, string & b){
 	for(int i = 1; i<max_gap+1;++i){
 
 		string b1 = b.substr(0,b.length()-i);
-		dist_ab[i-1] = dH(a,b1) + i;
+		dist_ba[i-1] = dH(a,b1) + i;
 
 	}
 
