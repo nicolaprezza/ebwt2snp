@@ -608,7 +608,6 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 
 	}
 
-
 }
 
 
@@ -752,6 +751,20 @@ void statistics(string & clusters_path){
 		cout << i << "\t" << flush;
 		for(uint64_t j=0;j<(100*clust_len_freq[i]*i)/max;++j) cout << "-" << flush;
 		cout << "   " << clust_len_freq[i]*i << endl;
+
+
+	}
+
+	max = 0;
+	for(int i=1;i<=MAX_C_LEN;++i) max = clust_len_freq[i] > max ? clust_len_freq[i] : max;
+
+	cout << "\nDistribution of cluster length: "<< endl;
+	cout << "\ncluster length\t# clusters with this length" << endl;
+	for(int i=0;i<=max_len;++i){
+
+		cout << i << "\t" << flush;
+		for(uint64_t j=0;j<(100*clust_len_freq[i])/max;++j) cout << "-" << flush;
+		cout << "   " << clust_len_freq[i] << endl;
 
 
 	}
