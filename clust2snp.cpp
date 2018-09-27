@@ -44,6 +44,8 @@ bool bcr = false;
 
 bool discoSNP=true;
 
+uint64_t n_clust = 0; //number of clusters
+
 
 void help(){
 
@@ -466,11 +468,12 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 	ofstream out_file = ofstream(out_path);
 
 	uint64_t id_nr = 1;
+	uint64_t idx = 0;
 
 	int perc = 0;
 	int last_perc = 0;
 
-	cout << "Saving SNPs/indels to file ... " << flush;
+	cout << "Saving SNPs/indels to file ... " << endl;
 	for(auto v:output_variants){
 
 		auto d = distance(v.left_context_0,v.left_context_1);
@@ -593,8 +596,9 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 
 		}
 
+		idx++;
 
-		perc = (id_nr*100)/output_variants.size();
+		perc = (idx*100)/output_variants.size();
 		if(perc >= last_perc+10){
 
 			last_perc=perc;
@@ -628,7 +632,11 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 
 	vector<candidate_variant> candidate_variants;
 
-	cout << "Filtering relevant clusters ... " << flush;
+	cout << "Filtering relevant clusters ... " << endl;
+
+	uint64_t cl = 0;
+	int perc=0;
+	int last_perc=0;
 
 	while(not clusters.eof()){
 
@@ -668,6 +676,16 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 
 			//append them to the vector of all candidate variants
 			candidate_variants.insert(candidate_variants.end(), v.begin(), v.end());
+
+		}
+
+		cl++;
+
+		perc = (cl*100)/(n_clust-1);
+		if(perc >= last_perc+10){
+
+			last_perc=perc;
+			cout << " " << perc << "% done." << endl;
 
 		}
 
@@ -719,6 +737,8 @@ void statistics(string & clusters_path){
 			max_len = length>max_len ? length : max_len;
 
 		}
+
+		n_clust++;
 
 	}
 

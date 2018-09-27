@@ -36,7 +36,7 @@ void help(){
 //	"-b          Input index files are in BCR format (default: GESA format)" << endl << endl <<
 
 	"\nTo run eBWTclust, you must first build the Enhanced Generalized Suffix Array of the input" << endl <<
-	"sequences. The EGSA must be stored in the input file's folder adding extension .0.egsa to " << endl <<
+	"sequences. The EGSA must be stored in the input file's folder adding extension .egsa to " << endl <<
 	"the name of the input file  (github.com/felipelouza/egsa). Output  is stored in " << endl <<
 	"reads.fasta.clusters." << endl;
 	 exit(0);
@@ -160,7 +160,7 @@ int main(int argc, char** argv){
 	if(input.compare("")==0) help();
 
 	string egsa_path = input;
-	egsa_path.append(".0.gesa");
+	egsa_path.append(".gesa");
 
 	cout << "This is eBWTclust. Input index file: " << egsa_path << endl;
 
