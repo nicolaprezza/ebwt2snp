@@ -24,7 +24,7 @@ int k_right = 0;//extract k_right nucleotides from right of suffix array range, 
 double pval_def = 0.05;
 double pval = 0;
 
-int max_snvs_def = 3;//maximum number of SNVs allowed in left contexts (included main SNP)
+int max_snvs_def = 2;//maximum number of SNVs allowed in left contexts (excluded main SNV).
 int max_snvs = 0;//maximum number of SNVs allowed in left contexts
 
 int mcov_out_def = 5;//minimum coverage required in the output events
@@ -55,7 +55,7 @@ void help(){
 	"-L <arg>    Length of left-context, SNP included (default: " << k_left_def << ")." << endl <<
 	"-R <arg>    Length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
 	"-g <arg>    Maximum allowed gap length in indel (default: " << max_gap_def << "). If 0, indels are disabled."<< endl <<
-	"-v <arg>    Maximum number of SNPs allowed in left context, main SNV excluded (default: " << max_snvs_def << ")."<< endl <<
+	"-v <arg>    Maximum number of mismatches allowed in left context, main SNV excluded (default: " << max_snvs_def << ")."<< endl <<
 	"-m <arg>    Minimum coverage per sample per event (default: " << mcov_out_def << "). We output only SNPs where" << endl <<
 	"            each of the two variants are represented at least <arg> times in the reads. The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
