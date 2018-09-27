@@ -674,7 +674,7 @@ void statistics(string & clusters_path){
 	clusters.open(clusters_path, ios::in | ios::binary);
 
 	//init with max cluster length 200
-	uint64_t MAX_C_LEN = 10000;
+	uint64_t MAX_C_LEN = 150;
 	auto clust_len_freq = vector<uint64_t>(MAX_C_LEN+1,0);
 
 	uint64_t max_len = 0;
