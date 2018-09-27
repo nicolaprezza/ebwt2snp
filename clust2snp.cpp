@@ -15,7 +15,7 @@
 
 using namespace std;
 
-int k_left_def = 31;//extract k_left nucleotides from left of suffix array range, for each entry in the cluster (includes the SNV)
+int k_left_def = 31;//extract k_left nucleotides from left of suffix array range, for each entry in the cluster (includes the SNP/indel)
 int k_left = 0;//extract k_left nucleotides from left of suffix array range, for each entry in the cluster
 
 int k_right_def = 30;//extract k_right nucleotides from right of suffix array range, only for entry with max LCP
@@ -55,7 +55,7 @@ void help(){
 	"-L <arg>    Length of left-context, SNP included (default: " << k_left_def << ")." << endl <<
 	"-R <arg>    Length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
 	"-g <arg>    Maximum allowed gap length in indel (default: " << max_gap_def << "). If 0, indels are disabled."<< endl <<
-	"-v <arg>    Maximum number of mismatches allowed in left context, main SNV excluded (default: " << max_snvs_def << ")."<< endl <<
+	"-v <arg>    Maximum number of mismatches allowed in left context, main SNV/indel excluded (default: " << max_snvs_def << ")."<< endl <<
 	"-m <arg>    Minimum coverage per sample per event (default: " << mcov_out_def << "). We output only SNPs where" << endl <<
 	"            each of the two variants are represented at least <arg> times in the reads. The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
@@ -63,7 +63,7 @@ void help(){
 	"-M <arg>    maximum cluster length (default: " << max_clust_length_def << ")."<< endl << endl <<
 
 	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input" << endl <<
-	"sequences, stored in a file with extension .0.egsa and with the same name of the input file" << endl <<
+	"sequences, stored in a file with extension .gesa and with the same name of the input file" << endl <<
 	"(github.com/felipelouza/egsa), and (2) the cluster file built with cluster-bwt. Output is" << endl <<
 	"stored in reads.snp.fasta, where reads.fasta is the input fasta file." << endl << endl <<
 
@@ -147,6 +147,11 @@ void get_reads(string fasta_path, vector<uint64_t> & read_ranks, vector<string> 
 
 	}
 
+	int perc = 0;
+	int last_perc = 0;
+
+	cout << "Extracting reads from fasta file ..." << endl;
+
 	for(uint64_t i = 0; i<read_ranks.size();++i){
 
 		while(j < read_ranks[i]){
@@ -168,6 +173,14 @@ void get_reads(string fasta_path, vector<uint64_t> & read_ranks, vector<string> 
 		}
 
 		out_DNA.push_back(DNA);
+
+		perc = (i*100)/(read_ranks.size()-1);
+		if(perc >= last_perc+10){
+
+			last_perc=perc;
+			cout << " " << perc << "% done." << endl;
+
+		}
 
 	}
 
@@ -454,7 +467,10 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 
 	uint64_t id_nr = 1;
 
-	cout << "Saving SNVs to file ... " << flush;
+	int perc = 0;
+	int last_perc = 0;
+
+	cout << "Saving SNPs/indels to file ... " << flush;
 	for(auto v:output_variants){
 
 		auto d = distance(v.left_context_0,v.left_context_1);
@@ -577,8 +593,16 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 
 		}
 
+
+		perc = (id_nr*100)/output_variants.size();
+		if(perc >= last_perc+10){
+
+			last_perc=perc;
+			cout << " " << perc << "% done." << endl;
+
+		}
+
 	}
-	cout << "done." << endl;
 
 
 }
@@ -785,7 +809,7 @@ int main(int argc, char** argv){
 	if(input.compare("")==0 or nr_reads1 == 0) help();
 
 	string egsa_path = input;
-	egsa_path.append(".0.gesa");
+	egsa_path.append(".gesa");
 
 	{
 
