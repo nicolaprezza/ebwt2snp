@@ -24,6 +24,7 @@ void help(){
 	"Converts the aligned calls (with bwa-mem) 'calls.sam' of clust2snp into a vcf file 'calls.sam.vcf'." << endl <<
 	"Options:" << endl <<
 		"-h          Print this help." << endl <<
+		"-s <arg>    Input SAM file. REQUIRED" << endl <<
 		"-d <arg>    Keep only one indel in pairs within <arg> bases. Default: " <<  indel_deduplicate_def << ")" << endl;
 	exit(0);
 }
@@ -62,14 +63,19 @@ int main(int argc, char** argv){
 
 	if(argc < 2) help();
 
+	string infile;
+
 	int opt;
-	while ((opt = getopt(argc, argv, "hd:")) != -1){
+	while ((opt = getopt(argc, argv, "hd:s:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
 			break;
 			case 'd':
 				indel_deduplicate = atoi(optarg);
+			break;
+			case 's':
+				infile = string(optarg);
 			break;
 			default:
 				help();
@@ -79,7 +85,7 @@ int main(int argc, char** argv){
 
 	indel_deduplicate = indel_deduplicate==0 ? indel_deduplicate_def : indel_deduplicate;
 
-	string infile = argv[1];
+	if(infile.compare("")==0) help();
 
 	string outfile = infile;
 	outfile.append(".vcf");
