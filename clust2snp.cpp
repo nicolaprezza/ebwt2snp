@@ -60,22 +60,23 @@ void help(){
 	"-L <arg>    Length of left-context, SNP included (default: " << k_left_def << ")." << endl <<
 	"-R <arg>    Length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
 	"-g <arg>    Maximum allowed gap length in indel (default: " << max_gap_def << "). If 0, indels are disabled."<< endl <<
-	"-v <arg>    Maximum number of mismatches allowed in left context, main SNV/indel excluded (default: " << max_snvs_def << ")."<< endl <<
-	"-m <arg>    Minimum coverage per sample per event (default: " << mcov_out_def << "). We output only SNPs where" << endl <<
-	"            each of the two variants are represented at least <arg> times in the reads. The minimum cluster length" << endl <<
+	"-v <arg>    Maximum number of mismatches allowed in left context, main SNP/indel excluded (default: " << max_snvs_def << ")."<< endl <<
+	"-m <arg>    Minimum coverage per sample per event  (default: " << mcov_out_def << ").  We output only SNPs where each of the" << endl <<
+	"            two variants are represented at least <arg> times in the reads.  The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
-	"-c <arg>    Extract this number of reads per individual to compute consensus (default: " << consensus_reads_def << ")."<< endl <<
-	"-p <arg>    Automatically choose max cluster length so that this fraction of bases is analyzed (default: " << pval_def << ")."<< endl <<
-	"-M <arg>    Maximum cluster length. This could be overwritten by the (smaller) value automatically computed using the" << endl <<
-	"            fraction specified with option -p (default: " << max_clust_length_def << ")."<< endl << endl <<
+	"-c <arg>    Extract this maximum number of reads per individual to compute consensus (default: " << consensus_reads_def << ")."<< endl <<
+	"-p <arg>    Automatically choose max cluster length so that this fraction of bases is analyzed (default: " << endl <<
+	"            " << pval_def << ")."<< endl <<
+	"-M <arg>    Maximum cluster length. This could be overwritten by the value automatically computed using" << endl <<
+	"            the fraction specified with option -p (default: " << max_clust_length_def << ")."<< endl << endl <<
 
-	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input" << endl <<
-	"sequences, stored in a file with extension .gesa and with the same name of the input file" << endl <<
-	"(github.com/felipelouza/egsa), and (2) the cluster file built with cluster-bwt. Output is" << endl <<
-	"stored in reads.snp.fasta, where reads.fasta is the input fasta file." << endl << endl <<
+	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input sequences," << endl <<
+	"stored in a file with extension .gesa and with the same name of the input file" << endl <<
+	"(github.com/felipelouza/egsa), and (2) the cluster file built with cluster-bwt. Output is stored in" << endl <<
+	"reads.snp.fasta, where reads.fasta is the input fasta file." << endl << endl <<
 
-	"Output: SNPs are output in KisSNP2 format as a fasta file. IMPORTANT: in most of the cases, each" << endl <<
-	"SNP is reported twice: one time on the forward strand and one on the reverse strand. " << endl;
+	"Output:  SNPs are output in KisSNP2 format as a fasta file. IMPORTANT: in many cases, each SNP/indel is" << endl <<
+	"reported twice: one time on the forward strand and one on the reverse strand. " << endl;
 
 	exit(0);
 }
