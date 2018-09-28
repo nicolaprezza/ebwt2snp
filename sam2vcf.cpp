@@ -208,22 +208,34 @@ int main(int argc, char** argv){
 
 			}
 
-
-			cout << type << " " << " '" << REF << "' -> '" << ALT << "' " << snp_pos << " " << pos << " " << chr << " " << REF_dna << " " << ALT_dna << " " << f << endl;
-
 			vcf_entry v;
 
-			if(indel){
+			if(snp_pos >= 0 and chr.compare("*") != 0){
 
-				if(REF.length()>0){
+				if(indel){
 
-					v = {
-									chr,
-									pos + snp_pos,
-									REF_dna.substr(snp_pos,REF.length()+1),
-									ALT_dna.substr(snp_pos,1),
-									indel
-					};
+					if(REF.length()>0){
+
+						v = {
+										chr,
+										pos + snp_pos,
+										REF_dna.substr(snp_pos,REF.length()+1),
+										ALT_dna.substr(snp_pos,1),
+										indel
+						};
+
+					}else{
+
+						v = {
+										chr,
+										pos + snp_pos,
+										REF_dna.substr(snp_pos,1),
+										ALT_dna.substr(snp_pos,ALT.length()+1),
+										indel
+						};
+
+					}
+
 
 				}else{
 
@@ -231,26 +243,15 @@ int main(int argc, char** argv){
 									chr,
 									pos + snp_pos,
 									REF_dna.substr(snp_pos,1),
-									ALT_dna.substr(snp_pos,ALT.length()+1),
+									ALT_dna.substr(snp_pos,1),
 									indel
 					};
 
 				}
 
-
-			}else{
-
-				v = {
-								chr,
-								pos + snp_pos,
-								REF_dna.substr(snp_pos,1),
-								ALT_dna.substr(snp_pos,1),
-								indel
-				};
+				VCF.push_back(v);
 
 			}
-
-			VCF.push_back(v);
 
 		}
 
