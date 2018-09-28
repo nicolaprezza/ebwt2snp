@@ -84,6 +84,35 @@ int base_to_int(unsigned char c){
 
 }
 
+unsigned char RC(unsigned char c){
+
+	switch(c){
+
+		case 'A': case 'a': return 'T'; break;
+		case 'C': case 'c': return 'G'; break;
+		case 'G': case 'g': return 'C'; break;
+		case 'T': case 't': return 'A'; break;
+		default: break;
+
+	}
+
+	return 'N';
+
+}
+
+string RC(string & s){
+
+	if(s.length()==0) return string();
+
+	string rc = s;
+
+	for(int i=0;i<s.length();++i) rc[rc.length()-i-1] = RC(s[i]);
+
+	return rc;
+
+}
+
+
 string rev(string & a){
 
 	string reversed(a.rbegin(), a.rend());

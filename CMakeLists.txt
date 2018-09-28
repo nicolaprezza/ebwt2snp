@@ -21,6 +21,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -ggdb -Ofast -fstrict-aliasing -DNDEBUG -march=native")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -Ofast -fstrict-aliasing -march=native")
 
+add_executable(sam2vcf sam2vcf.cpp)
 add_executable(snp2fastq snp2fastq.cpp)
 add_executable(clust2snp clust2snp.cpp)
 add_executable(eBWTclust eBWTclust.cpp)
