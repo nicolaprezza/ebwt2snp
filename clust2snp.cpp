@@ -37,6 +37,9 @@ int max_clust_length = 0;
 int max_gap = 0;
 int max_gap_def = 10;
 
+int consensus_reads = 0;
+int consensus_reads_def = 3;
+
 string input;
 uint64_t nr_reads1 = 0;
 
@@ -61,6 +64,7 @@ void help(){
 	"-m <arg>    Minimum coverage per sample per event (default: " << mcov_out_def << "). We output only SNPs where" << endl <<
 	"            each of the two variants are represented at least <arg> times in the reads. The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
+	"-c <arg>    Extract this number of reads per individual to compute consensus (default: " << consensus_reads_def << ")."<< endl <<
 	"-p <arg>    Automatically choose max cluster length so that this fraction of bases is analyzed (default: " << pval_def << ")."<< endl <<
 	"-M <arg>    Maximum cluster length. This could be overwritten by the (smaller) value automatically computed using the" << endl <<
 	"            fraction specified with option -p (default: " << max_clust_length_def << ")."<< endl << endl <<
@@ -86,11 +90,11 @@ struct candidate_variant{
 	//left contexts, of length k_left. Note: the variant is located at the end of the left context.
 	//in the case of SNP, it is in the last letter of the left context.
 
-	uint64_t left_context_idx_0; //index of the read containing the left context. Individual 0
-	uint64_t left_context_pos_0; //starting position of the left context in the read. Individual 0
+	vector<uint64_t> left_context_idx_0; //indexes of the read containing the left context. Individual 0
+	vector<uint64_t> left_context_pos_0; //starting positions of the left context in the read. Individual 0
 
-	uint64_t left_context_idx_1; //index of the read containing the left context. Individual 1
-	uint64_t left_context_pos_1; //starting position of the left context in the read. Individual 1
+	vector<uint64_t> left_context_idx_1; //index of the read containing the left context. Individual 1
+	vector<uint64_t> left_context_pos_1; //starting position of the left context in the read. Individual 1
 
 	//right contexdts, of length k_right
 
@@ -153,7 +157,7 @@ void get_reads(string fasta_path, vector<uint64_t> & read_ranks, vector<string> 
 	int perc = 0;
 	int last_perc = 0;
 
-	cout << "Extracting reads from fasta file ..." << endl;
+	cout << "(2/4) Extracting reads from fasta file ..." << endl;
 
 	for(uint64_t i = 0; i<read_ranks.size();++i){
 
@@ -281,6 +285,46 @@ pair<int,int> distance(string & a, string & b){
 
 }
 
+/*
+ * return consensus letter among all i-th letters of strings in S.
+ */
+unsigned char consensus(vector<string> & S, uint64_t i){
+
+	unsigned char c;
+
+	auto nr = vector<uint64_t>(4,0);
+
+	for(auto s:S){
+
+		assert(i<s.length());
+		nr[ base_to_int(s[i]) ]++;
+
+	}
+
+	return int_to_base( std::distance(nr.begin(), std::max_element(nr.begin(),nr.end())) );
+
+}
+
+
+/*
+ * input: vector of strings with the same length
+ *
+ * output: consensus string. At each position, choose the most represented letter. In case of ties, choose arbitrarily.
+ *
+ */
+string consensus(vector<string> & S){
+
+	if(S.size()==0) return "";
+	if(S.size()==1) return S[0];
+
+	string C = S[0];
+
+	for(uint64_t i = 0;i<C.length();++i) C[i] = consensus(S,i);
+
+	return C;
+
+}
+
 vector<candidate_variant> find_variants(vector<t_GSA> & gsa_cluster){
 
 	vector<candidate_variant>  out;
@@ -354,13 +398,11 @@ vector<candidate_variant> find_variants(vector<t_GSA> & gsa_cluster){
 				//compute max length of left context in indiv. 0 and 1, on the reads whose left
 				//contexts end with c0 and c1, respectively.
 
-				uint64_t max_left_len_0 = 0;
-				uint64_t max_left_idx_0 = 0;
-				uint64_t max_left_pos_0 = 0;
+				vector<uint64_t> left_pos_0;
+				vector<uint64_t> left_idx_0;
 
-				uint64_t max_left_len_1 = 0;
-				uint64_t max_left_idx_1 = 0;
-				uint64_t max_left_pos_1 = 0;
+				vector<uint64_t> left_pos_1;
+				vector<uint64_t> left_idx_1;
 
 				for(uint64_t i=0;i<gsa_cluster.size();++i){
 
@@ -369,31 +411,29 @@ vector<candidate_variant> find_variants(vector<t_GSA> & gsa_cluster){
 					uint64_t prefix_len = e.suff;
 					unsigned char ch = e.bwt;
 
-					if(prefix_len >= k_left and ch == c0 and sample == 0){
+					if(prefix_len >= k_left and ch == c0 and sample == 0 and left_idx_0.size()<consensus_reads){
 
-						max_left_len_0 = k_left;
-						max_left_idx_0 = e.text;
-						max_left_pos_0 = e.suff-k_left;
+						left_idx_0.push_back(e.text);
+						left_pos_0.push_back(e.suff-k_left);
 
 					}
 
-					if(prefix_len >= k_left and ch == c1 and sample == 1){
+					if(prefix_len >= k_left and ch == c1 and sample == 1 and left_idx_1.size()<consensus_reads){
 
-						max_left_len_1 = k_left;
-						max_left_idx_1 = e.text;
-						max_left_pos_1 = e.suff-k_left;
+						left_idx_1.push_back(e.text);
+						left_pos_1.push_back(e.suff-k_left);
 
 					}
 
 				}
 
-				if(max_left_len_0>0 and max_left_len_1>0){
+				if(left_idx_0.size()>0 and left_idx_1.size()>0){
 
 					out.push_back(
 						{
 
-							max_left_idx_0, max_left_pos_0,
-							max_left_idx_1, max_left_pos_1,
+							left_idx_0, left_pos_0,
+							left_idx_1, left_pos_1,
 							max_lcp_read_idx, max_lcp_read_pos
 
 						}
@@ -423,8 +463,8 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 	//extract the ranks of all reads we need to process
 	for(auto v : candidate_variants){
 
-		read_ranks.push_back(v.left_context_idx_0);
-		read_ranks.push_back(v.left_context_idx_1);
+		read_ranks.insert(read_ranks.end(), v.left_context_idx_0.begin(), v.left_context_idx_0.end());
+		read_ranks.insert(read_ranks.end(), v.left_context_idx_1.begin(), v.left_context_idx_1.end());
 		read_ranks.push_back(v.right_context_idx);
 
 	}
@@ -439,22 +479,41 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 	//get the reads as strings
 	get_reads(fasta_path, read_ranks, reads);
 
-	cout << "Building candidate read-pairs ... " << endl;
+	cout << "(3/4) Building candidate read pairs ... " << endl;
 
 	uint64_t idx=0;
 	int perc = 0, last_perc=0;
 
 	for(auto v:candidate_variants){
 
-		uint64_t l_idx_0 = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.left_context_idx_0) );
-		uint64_t l_idx_1 = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.left_context_idx_1) );
+		//left contexts extracted from individuals 0 and 1
+		vector<string> left_0;
+		vector<string> left_1;
+
+		for(int j=0; j<v.left_context_idx_0.size(); ++j){
+
+			uint64_t idx = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.left_context_idx_0[j]) );
+			left_0.push_back(reads[idx].substr(v.left_context_pos_0[j],k_left));
+
+		}
+
+		for(int j=0; j<v.left_context_idx_1.size(); ++j){
+
+			uint64_t idx = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.left_context_idx_1[j]) );
+			left_1.push_back(reads[idx].substr(v.left_context_pos_1[j],k_left));
+
+		}
+
+		string left_0_consensus = consensus(left_0);
+		string left_1_consensus = consensus(left_1);
+
 		uint64_t r_idx = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.right_context_idx) );
 
 		out.push_back(
 
 			{
-				reads[l_idx_0].substr(v.left_context_pos_0,k_left),
-				reads[l_idx_1].substr(v.left_context_pos_1,k_left),
+				left_0_consensus,
+				left_1_consensus,
 				reads[r_idx].substr(v.right_context_pos,k_right),
 			}
 
@@ -490,7 +549,7 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 	int perc = 0;
 	int last_perc = 0;
 
-	cout << "Computing edit distances and saving SNPs/indels to file ... " << endl;
+	cout << "(4/4) Computing edit distances and saving SNPs/indels to file ... " << endl;
 	for(auto v:output_variants){
 
 		auto d = distance(v.left_context_0,v.left_context_1);
@@ -648,7 +707,7 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 
 	vector<candidate_variant> candidate_variants;
 
-	cout << "Filtering relevant clusters ... " << endl;
+	cout << "(1/4) Filtering relevant clusters ... " << endl;
 
 	uint64_t cl = 0;
 	int perc=0;
@@ -797,7 +856,7 @@ void statistics(string & clusters_path){
 
 	}
 
-	max = 0;
+/*	max = 0;
 	for(int i=1;i<=MAX_C_LEN;++i) max = clust_len_freq[i] > max ? clust_len_freq[i] : max;
 
 	cout << "\nDistribution of cluster length: "<< endl;
@@ -809,7 +868,7 @@ void statistics(string & clusters_path){
 		cout << "   " << clust_len_freq[i] << endl;
 
 
-	}
+	}*/
 
 	cout << "\nCluster sizes allowed: [" << mcov_out*2 << "," << max_clust_length << "]" << endl;
 
@@ -825,7 +884,7 @@ int main(int argc, char** argv){
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:c:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
@@ -851,6 +910,9 @@ int main(int argc, char** argv){
 			case 'L':
 				k_left = atoi(optarg);
 			break;
+			case 'c':
+				consensus_reads = atoi(optarg);
+			break;
 			case 'R':
 				k_right = atoi(optarg);
 			break;
@@ -866,6 +928,7 @@ int main(int argc, char** argv){
 		}
 	}
 
+	consensus_reads = consensus_reads==0?consensus_reads_def:consensus_reads;
 	max_gap = max_gap==0?max_gap_def:max_gap;
 	max_clust_length = max_clust_length==0?max_clust_length_def:max_clust_length;
 	k_left = k_left==0?k_left_def:k_left;
