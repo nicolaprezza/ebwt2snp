@@ -16,10 +16,10 @@ using namespace std;
 
 void help(){
 
-	cout << "snp2fasta calls.snp" << endl << endl <<
-	"Converts clust2snp's calls 'calls.snp' into a fasta  file 'calls.snp.fasta'. The  output contains  one " << endl <<
+	cout << "snp2fastq calls.snp" << endl << endl <<
+	"Converts clust2snp's calls 'calls.snp' into a fastq  file 'calls.snp.fastq'. The  output contains  one " << endl <<
 	"read per call, where we put the second individual's DNA in the read's name, and the first individual's " << endl <<
-	"DNA in the read DNA." << endl;
+	"DNA in the read DNA. Base qualities are fake (all maximum)." << endl;
 	exit(0);
 }
 
@@ -30,7 +30,7 @@ int main(int argc, char** argv){
 	string infile = argv[1];
 
 	string outfile = infile;
-	outfile.append(".fasta");
+	outfile.append(".fastq");
 
 	ifstream is(infile);
 	ofstream of(outfile);
@@ -44,6 +44,8 @@ int main(int argc, char** argv){
 	while(getline(is, str)){
 
 		if(idx%4==0){//first line of call
+
+			str = str.substr(1);//remove '>'
 
 			char *p = strtok((char*)str.c_str(), "_");
 
@@ -76,8 +78,11 @@ int main(int argc, char** argv){
 
 			header.append(str);
 
-			//now output
-			of << header << endl << dna << endl;
+			//now output fastq entry
+			of 	<< "@" << header << endl <<
+				dna << endl <<
+				"+" << endl <<
+				string(dna.length(),'I') << endl;
 
 		}
 
