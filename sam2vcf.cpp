@@ -263,7 +263,7 @@ int main(int argc, char** argv){
 
 	std::sort(VCF.begin(),VCF.end());
 
-	for(int i=0;i<VCF.size()-1;++i){
+	/*for(int i=0;i<VCF.size()-1;++i){
 
 		if(VCF[i]==VCF[i+1]){
 
@@ -274,7 +274,7 @@ int main(int argc, char** argv){
 
 		}
 
-	}
+	}*/
 
 	VCF.erase( unique( VCF.begin(), VCF.end() ), VCF.end() );
 
