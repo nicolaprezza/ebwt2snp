@@ -263,16 +263,18 @@ int main(int argc, char** argv){
 
 	std::sort(VCF.begin(),VCF.end());
 
-	/*for(int i=0;i<VCF.size()-1;++i){
+	for(int i=0;i<VCF.size()-1;++i){
 
 		if(VCF[i]==VCF[i+1]){
 
 			cout << VCF[i].chr << "\t" << VCF[i].pos << "\t" << ".\t" << VCF[i].REF << "\t" << VCF[i].ALT << "\t" << (VCF[i].indel?"INDEL":"SNP") << endl;
 			cout << VCF[i+1].chr << "\t" << VCF[i+1].pos << "\t" << ".\t" << VCF[i+1].REF << "\t" << VCF[i+1].ALT << "\t" << (VCF[i+1].indel?"INDEL":"SNP") << endl;
 
+			cout << endl;
+
 		}
 
-	}*/
+	}
 
 	VCF.erase( unique( VCF.begin(), VCF.end() ), VCF.end() );
 
