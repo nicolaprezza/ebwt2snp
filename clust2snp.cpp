@@ -747,13 +747,24 @@ void statistics(string & clusters_path){
 	uint64_t max = 0;
 	for(int i=1;i<=MAX_C_LEN;++i) max = clust_len_freq[i]*i > max ? clust_len_freq[i]*i : max;
 
+	uint64_t cumulative = 0;
+
 	cout << "\nDistribution of base coverage: "<< endl;
-	cout << "\ncluster length\t# bases in a cluster with this length" << endl;
+	cout << "\ncluster length\t# bases in a cluster with this length\t cumulative fraction (from 2m = " << 2*mcov_out << ")" << endl;
 	for(int i=0;i<=max_len;++i){
 
 		cout << i << "\t" << flush;
 		for(uint64_t j=0;j<(100*clust_len_freq[i]*i)/max;++j) cout << "-" << flush;
-		cout << "   " << clust_len_freq[i]*i << endl;
+		cout << "\t" << clust_len_freq[i]*i << flush;
+
+		if(i>=2*mcov_out){
+
+			cumulative += clust_len_freq[i]*i;
+			cout << "\t" << double(cumulative)/double(n_bases);
+
+		}
+
+		cout << endl;
 
 
 	}
@@ -761,7 +772,7 @@ void statistics(string & clusters_path){
 	//auto-detect max cluster length
 
 	max_clust_length = 2*mcov_out;//start from the minimum cluster length
-	uint64_t cumulative = clust_len_freq[max_clust_length]*max_clust_length;//cumulative number of bases
+	cumulative = clust_len_freq[max_clust_length]*max_clust_length;//cumulative number of bases
 
 	while( double(cumulative)/double(n_bases) < pval and  max_clust_length < MAX_C_LEN){
 
