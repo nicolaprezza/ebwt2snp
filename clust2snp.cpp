@@ -21,7 +21,7 @@ int k_left = 0;//extract k_left nucleotides from left of suffix array range, for
 int k_right_def = 30;//extract k_right nucleotides from right of suffix array range, only for entry with max LCP
 int k_right = 0;//extract k_right nucleotides from right of suffix array range, for each entry in the cluster
 
-double pval_def = 0.05;
+double pval_def = 0.95; //choose cluster length so that this fraction of bases are captured (the others are discarded because inside a too small/big cluster)
 double pval = 0;
 
 int max_snvs_def = 2;//maximum number of SNVs allowed in left contexts (excluded main SNV).
@@ -30,7 +30,7 @@ int max_snvs = 0;//maximum number of SNVs allowed in left contexts
 int mcov_out_def = 5;//minimum coverage required in the output events
 int mcov_out = 0;//if a SNV is testified at least this number of times, then it is considered as a relevant event
 
-int max_clust_length_def = 60;
+int max_clust_length_def = 200;
 int max_clust_length = 0;
 
 //max indel length. If 0, indels are disabled.
@@ -45,7 +45,7 @@ bool bcr = false;
 bool discoSNP=true;
 
 uint64_t n_clust = 0; //number of clusters
-
+uint64_t n_bases = 0; //number of bases in clusters
 
 void help(){
 
@@ -61,8 +61,9 @@ void help(){
 	"-m <arg>    Minimum coverage per sample per event (default: " << mcov_out_def << "). We output only SNPs where" << endl <<
 	"            each of the two variants are represented at least <arg> times in the reads. The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
-	//"-p <arg>    p-value of discarded cluster sizes (default: " << pval_def << ")."<< endl << endl <<
-	"-M <arg>    maximum cluster length (default: " << max_clust_length_def << ")."<< endl << endl <<
+	"-p <arg>    Automatically choose max cluster length so that this fraction of bases is analyzed (default: " << pval_def << ")."<< endl <<
+	"-M <arg>    maximum cluster length. This could be overwritten by the (smaller) value automatically computed using the" << endl <<
+	"            fraction specified with option -p (default: " << max_clust_length_def << ")."<< endl << endl <<
 
 	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input" << endl <<
 	"sequences, stored in a file with extension .gesa and with the same name of the input file" << endl <<
@@ -707,15 +708,16 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 }
 
 /*
- * compute coverage statistics
+ * compute coverage statistics, auto-compute max cluster length
  */
 void statistics(string & clusters_path){
 
 	ifstream clusters;
 	clusters.open(clusters_path, ios::in | ios::binary);
 
+	uint64_t MAX_C_LEN = max_clust_length;
+
 	//init with max cluster length 200
-	uint64_t MAX_C_LEN = 150;
 	auto clust_len_freq = vector<uint64_t>(MAX_C_LEN+1,0);
 
 	uint64_t max_len = 0;
@@ -738,6 +740,7 @@ void statistics(string & clusters_path){
 		}
 
 		n_clust++;
+		n_bases+=length;
 
 	}
 
@@ -752,6 +755,18 @@ void statistics(string & clusters_path){
 		for(uint64_t j=0;j<(100*clust_len_freq[i]*i)/max;++j) cout << "-" << flush;
 		cout << "   " << clust_len_freq[i]*i << endl;
 
+
+	}
+
+	//auto-detect max cluster length
+
+	max_clust_length = 2*mcov_out;//start from the minimum cluster length
+	uint64_t cumulative = clust_len_freq[max_clust_length]*max_clust_length;//cumulative number of bases
+
+	while( double(cumulative)/double(n_bases) < pval and  max_clust_length < MAX_C_LEN){
+
+		max_clust_length++;
+		cumulative += clust_len_freq[max_clust_length]*max_clust_length;
 
 	}
 
@@ -783,7 +798,7 @@ int main(int argc, char** argv){
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:M:g:")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
@@ -812,9 +827,9 @@ int main(int argc, char** argv){
 			case 'R':
 				k_right = atoi(optarg);
 			break;
-			//case 'p':
-			//	pval = atof(optarg);
-			//break;
+			case 'p':
+				pval = atof(optarg);
+			break;
 			case 'v':
 				max_snvs = atoi(optarg);
 			break;
@@ -828,7 +843,7 @@ int main(int argc, char** argv){
 	max_clust_length = max_clust_length==0?max_clust_length_def:max_clust_length;
 	k_left = k_left==0?k_left_def:k_left;
 	k_right = k_right==0?k_right_def:k_right;
-	//pval = pval==0?pval_def:pval;
+	pval = pval==0?pval_def:pval;
 	max_snvs = max_snvs==0?max_snvs_def:max_snvs;
 	mcov_out = mcov_out==0?mcov_out_def:mcov_out;
 
