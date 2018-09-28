@@ -73,7 +73,7 @@ void help(){
 	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input sequences," << endl <<
 	"stored in a file with extension .gesa and with the same name of the input file" << endl <<
 	"(github.com/felipelouza/egsa), and (2) the cluster file built with cluster-bwt. Output is stored in" << endl <<
-	"reads.snp.fasta, where reads.fasta is the input fasta file." << endl << endl <<
+	"reads.snp (this is actually a fasta file), where reads.fasta is the input fasta file." << endl << endl <<
 
 	"Output:  SNPs are output in KisSNP2 format as a fasta file. IMPORTANT: in many cases, each SNP/indel is" << endl <<
 	"reported twice: one time on the forward strand and one on the reverse strand. " << endl;
@@ -357,7 +357,7 @@ vector<candidate_variant> find_variants(vector<t_GSA> & gsa_cluster){
 	//discard cluster if max LCP is less than k_right
 	if(max_lcp_val < k_right) return out;
 
-	//compute the lists of frequent characters in indiv 1 and 2
+	//compute the lists of frequent characters in indiv 0 and 1
 	vector<unsigned char> frequent_char_0;
 	vector<unsigned char> frequent_char_1;
 
@@ -380,10 +380,10 @@ vector<candidate_variant> find_variants(vector<t_GSA> & gsa_cluster){
 	//filter: remove clusters that cannot reflect a variation
 	if(	frequent_char_0.size()==0 or // not covered enough
 		frequent_char_1.size()==0 or // not covered enough
-		frequent_char_0.size()>2 or // at most 2 alleles per individual
-		frequent_char_1.size()>2 or // at most 2 alleles per individual
-		frequent_char_0 == frequent_char_1 or // same alleles: probably both heterozigous (and no variants)
-		all_chars.size() > 3	//4 or more distinct frequent characters in the cluster
+		frequent_char_0.size()>2 or // we require at most 2 alleles per individual
+		frequent_char_1.size()>2 or // we require  at most 2 alleles per individual
+		frequent_char_0 == frequent_char_1 or // same alleles: probably both heterozigous / multiple region (and no variants)
+		all_chars.size() > 3	//4 or more distinct frequent characters in the cluster (probably multiple region)
 	){
 
 		return out;
@@ -992,7 +992,7 @@ int main(int argc, char** argv){
 
 	string filename_out = input;
 	filename_out = filename_out.substr(0,filename_out.rfind(".fast"));
-	filename_out.append(".snp.fasta");
+	filename_out.append(".snp");
 
 	cout << "Output events will be stored in " << filename_out << endl;
 
