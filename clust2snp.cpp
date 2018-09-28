@@ -21,7 +21,7 @@ int k_left = 0;//extract k_left nucleotides from left of suffix array range, for
 int k_right_def = 30;//extract k_right nucleotides from right of suffix array range, only for entry with max LCP
 int k_right = 0;//extract k_right nucleotides from right of suffix array range, for each entry in the cluster
 
-double pval_def = 0.90; //choose cluster length so that this fraction of bases are captured (the others are discarded because inside a too small/big cluster)
+double pval_def = 0.85; //choose cluster length so that this fraction of bases are captured (the others are discarded because inside a too small/big cluster)
 double pval = 0;
 
 int max_snvs_def = 2;//maximum number of SNVs allowed in left contexts (excluded main SNV).
@@ -30,7 +30,7 @@ int max_snvs = 0;//maximum number of SNVs allowed in left contexts
 int mcov_out_def = 5;//minimum coverage required in the output events
 int mcov_out = 0;//if a SNV is testified at least this number of times, then it is considered as a relevant event
 
-int max_clust_length_def = 200;
+int max_clust_length_def = 150;
 int max_clust_length = 0;
 
 //max indel length. If 0, indels are disabled.
@@ -439,6 +439,11 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 	//get the reads as strings
 	get_reads(fasta_path, read_ranks, reads);
 
+	cout << "Building candidate read-pairs ... " << endl;
+
+	uint64_t idx=0;
+	int perc = 0, last_perc=0;
+
 	for(auto v:candidate_variants){
 
 		uint64_t l_idx_0 = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.left_context_idx_0) );
@@ -454,6 +459,17 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 			}
 
 		);
+
+		++idx;
+
+		perc = (idx*100)/candidate_variants.size();
+		if(perc >= last_perc+10){
+
+			last_perc=perc;
+			cout << " " << perc << "% done." << endl;
+
+		}
+
 
 	}
 
@@ -474,7 +490,7 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 	int perc = 0;
 	int last_perc = 0;
 
-	cout << "Saving SNPs/indels to file ... " << endl;
+	cout << "Computing edit distances and saving SNPs/indels to file ... " << endl;
 	for(auto v:output_variants){
 
 		auto d = distance(v.left_context_0,v.left_context_1);
