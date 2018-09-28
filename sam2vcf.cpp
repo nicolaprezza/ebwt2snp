@@ -209,7 +209,7 @@ int main(int argc, char** argv){
 			}
 
 
-			//cout << type << " " << " '" << REF << "' -> '" << ALT << "' " << snp_pos << " " << pos << " " << chr << " " << REF_dna << " " << ALT_dna << " " << f << endl;
+			cout << type << " " << " '" << REF << "' -> '" << ALT << "' " << snp_pos << " " << pos << " " << chr << " " << REF_dna << " " << ALT_dna << " " << f << endl;
 
 			vcf_entry v;
 
