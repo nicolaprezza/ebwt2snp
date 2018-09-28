@@ -21,7 +21,7 @@ int k_left = 0;//extract k_left nucleotides from left of suffix array range, for
 int k_right_def = 30;//extract k_right nucleotides from right of suffix array range, only for entry with max LCP
 int k_right = 0;//extract k_right nucleotides from right of suffix array range, for each entry in the cluster
 
-double pval_def = 0.95; //choose cluster length so that this fraction of bases are captured (the others are discarded because inside a too small/big cluster)
+double pval_def = 0.90; //choose cluster length so that this fraction of bases are captured (the others are discarded because inside a too small/big cluster)
 double pval = 0;
 
 int max_snvs_def = 2;//maximum number of SNVs allowed in left contexts (excluded main SNV).
@@ -62,7 +62,7 @@ void help(){
 	"            each of the two variants are represented at least <arg> times in the reads. The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
 	"-p <arg>    Automatically choose max cluster length so that this fraction of bases is analyzed (default: " << pval_def << ")."<< endl <<
-	"-M <arg>    maximum cluster length. This could be overwritten by the (smaller) value automatically computed using the" << endl <<
+	"-M <arg>    Maximum cluster length. This could be overwritten by the (smaller) value automatically computed using the" << endl <<
 	"            fraction specified with option -p (default: " << max_clust_length_def << ")."<< endl << endl <<
 
 	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input" << endl <<
