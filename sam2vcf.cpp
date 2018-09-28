@@ -15,11 +15,16 @@
 
 using namespace std;
 
+int indel_deduplicate_def = 5;//if 2 indels are within this number of bases, keep only one of the two.
+int indel_deduplicate = 0;
 
 void help(){
 
 	cout << "sam2vcf calls.sam" << endl << endl <<
-	"Converts the aligned calls (with bwa-mem) 'calls.sam' of clust2snp into a vcf file 'calls.sam.vcf'." << endl;
+	"Converts the aligned calls (with bwa-mem) 'calls.sam' of clust2snp into a vcf file 'calls.sam.vcf'." << endl <<
+	"Options:" << endl <<
+		"-h          Print this help." << endl <<
+		"-d <arg>    Keep only one indel in pairs within <arg> bases. Default: " <<  indel_deduplicate_def << ")" << endl;
 	exit(0);
 }
 
@@ -55,7 +60,24 @@ struct vcf_entry{
 
 int main(int argc, char** argv){
 
-	if(argc != 2) help();
+	if(argc < 2) help();
+
+	int opt;
+	while ((opt = getopt(argc, argv, "hd:")) != -1){
+		switch (opt){
+			case 'h':
+				help();
+			break;
+			case 'd':
+				indel_deduplicate = atoi(optarg);
+			break;
+			default:
+				help();
+			return -1;
+		}
+	}
+
+	indel_deduplicate = indel_deduplicate==0 ? indel_deduplicate_def : indel_deduplicate;
 
 	string infile = argv[1];
 
@@ -278,16 +300,49 @@ int main(int argc, char** argv){
 
 	VCF.erase( unique( VCF.begin(), VCF.end() ), VCF.end() );
 
-	uint64_t new_size = VCF.size();
+	//remove close indels
+
+	vector<vcf_entry> VCF_filt;
+	for(int i=0;i<VCF.size()-1;++i){
+
+		if(		VCF[i].indel and
+				VCF[i+1].indel and
+				VCF[i].chr.compare(VCF[i+1].chr)==0 and
+				std::abs( int(VCF[i].pos)-int(VCF[i+1].pos) ) <= indel_deduplicate  ){
+
+
+			VCF_filt.push_back(VCF[i]);//keep first indel
+			i++;//skip second indel
+
+		}else{
+
+			VCF_filt.push_back(VCF[i]);
+
+		}
+
+	}
+
+	VCF_filt.push_back(VCF[VCF.size()-1]);
+
+	uint64_t new_size = VCF_filt.size();
 
 	cout << (old_size-new_size) << " duplicates found. Saving remaining " << new_size << " unique SNPS/indels." << endl;
 
-	for(auto v:VCF){
+	uint64_t n_indels = 0;
+	uint64_t n_snps = 0;
+
+	for(auto v:VCF_filt){
 
 		//cout << v.chr << "\t" << v.pos << "\t" << ".\t" << v.REF << "\t" << v.ALT << "\t" << (indel?"INDEL":"SNP") << endl;
 		of << v.chr << "\t" << v.pos << "\t" << ".\t" << v.REF << "\t" << v.ALT << "\t" << (v.indel?"INDEL":"SNP") << endl;
 
+		n_indels += v.indel;
+		n_snps += (not v.indel);
+
 	}
+
+	cout << "Number of SNPs found: " << n_snps << endl;
+	cout << "Number of indels found: " << n_indels << endl;
 
 	is.close();
 	of.close();
