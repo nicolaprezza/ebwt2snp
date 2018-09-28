@@ -45,23 +45,7 @@ int main(int argc, char** argv){
 
 		if(idx%4==0){//first line of call
 
-			str = str.substr(1);//remove '>'
-
-			char *p = strtok((char*)str.c_str(), "_");
-
-			header = string(p);
-
-			p = strtok(NULL,"_");
-			p = strtok(NULL,"_");
-			p = strtok(NULL,"_");//this contains event number
-
-			//pick number before '|'
-			string ev(p);
-			p = strtok((char*)ev.c_str(), "|");
-			ev = string(p);
-
-			header.append("_");
-			header.append(ev);
+			header = str.substr(1);//remove '>'
 			header.append("_");
 
 		}
