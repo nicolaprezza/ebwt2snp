@@ -18,12 +18,15 @@ using namespace std;
 int indel_deduplicate_def = 5;//if 2 indels are within this number of bases, keep only one of the two.
 int indel_deduplicate = 0;
 
+bool non_isolated = true;
+
 void help(){
 
 	cout << "sam2vcf calls.sam" << endl << endl <<
 	"Converts the aligned calls (with bwa-mem) 'calls.sam' of clust2snp into a vcf file 'calls.sam.vcf'." << endl <<
 	"Options:" << endl <<
 		"-h          Print this help." << endl <<
+		"-x          Disable non-isolated SNPs (default: enabled)." << endl <<
 		"-s <arg>    Input SAM file. REQUIRED" << endl <<
 		"-d <arg>    Keep only one indel in pairs within <arg> bases. Default: " <<  indel_deduplicate_def << ")" << endl;
 	exit(0);
@@ -66,10 +69,13 @@ int main(int argc, char** argv){
 	string infile;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hd:s:")) != -1){
+	while ((opt = getopt(argc, argv, "xhd:s:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
+			break;
+			case 'x':
+				non_isolated = false;
 			break;
 			case 'd':
 				indel_deduplicate = atoi(optarg);
@@ -283,34 +289,60 @@ int main(int argc, char** argv){
 				 * find non-isolated SNPs
 				 */
 
-				if(indel){
+				if(non_isolated){
 
-					if(reversed){
+					if(indel){
 
-						//non-isolated SNPs are on the right of the end position of indel
+						if(reversed){
 
-						int indel_length = REF.length() > 0 ? REF.length() : ALT.length();
+							//non-isolated SNPs are on the right of the end position of indel
 
-						int L = std::max(REF_dna.length(), ALT_dna.length());//length of fragment containing the insert
+							int indel_length = REF.length() > 0 ? REF.length() : ALT.length();
 
-						int len_right = L - (snp_pos+indel_length) -1; //length of right part in common (with potential SNPs)
+							int L = std::max(REF_dna.length(), ALT_dna.length());//length of fragment containing the insert
 
-						int snp_pos_ref = REF.length() > 0 ? snp_pos + indel_length +1 : snp_pos +1;
-						int snp_pos_alt = REF.length() > 0 ? snp_pos +1 : snp_pos + indel_length +1;
+							int len_right = L - (snp_pos+indel_length) -1; //length of right part in common (with potential SNPs)
 
-						for(int i=0;i<len_right;++i){
+							int snp_pos_ref = REF.length() > 0 ? snp_pos + indel_length +1 : snp_pos +1;
+							int snp_pos_alt = REF.length() > 0 ? snp_pos +1 : snp_pos + indel_length +1;
 
-							if(REF_dna[snp_pos_ref+i] != ALT_dna[snp_pos_alt+i]){
+							for(int i=0;i<len_right;++i){
 
-								vcf_entry v  = {
-													chr,
-													pos + i,
-													REF_dna.substr(snp_pos_ref+i,1),
-													ALT_dna.substr(snp_pos_alt+i,1),
-													false
-									};
+								if(REF_dna[snp_pos_ref+i] != ALT_dna[snp_pos_alt+i]){
 
-								VCF.push_back(v);
+									vcf_entry v  = {
+														chr,
+														pos + i,
+														REF_dna.substr(snp_pos_ref+i,1),
+														ALT_dna.substr(snp_pos_alt+i,1),
+														false
+										};
+
+									VCF.push_back(v);
+
+								}
+
+							}
+
+						}else{
+
+							//non-isolated SNPs are on the left of the start position of indel
+
+							for(int i=0;i<snp_pos;++i){
+
+								if(REF_dna[i] != ALT_dna[i]){
+
+									vcf_entry v  = {
+														chr,
+														pos + i,
+														REF_dna.substr(i,1),
+														ALT_dna.substr(i,1),
+														false
+										};
+
+									VCF.push_back(v);
+
+								}
 
 							}
 
@@ -318,69 +350,47 @@ int main(int argc, char** argv){
 
 					}else{
 
-						//non-isolated SNPs are on the left of the start position of indel
+						if(reversed){
 
-						for(int i=0;i<snp_pos;++i){
+							//non-isolated SNPs are on the right
 
-							if(REF_dna[i] != ALT_dna[i]){
+							for(int i=snp_pos+1;i<REF_dna.length();++i){
 
-								vcf_entry v  = {
-													chr,
-													pos + i,
-													REF_dna.substr(i,1),
-													ALT_dna.substr(i,1),
-													false
-									};
+								if(REF_dna[i] != ALT_dna[i]){
 
-								VCF.push_back(v);
+									vcf_entry v  = {
+														chr,
+														pos + i,
+														REF_dna.substr(i,1),
+														ALT_dna.substr(i,1),
+														false
+										};
 
-							}
+									VCF.push_back(v);
 
-						}
-
-					}
-
-				}else{
-
-					if(reversed){
-
-						//non-isolated SNPs are on the right
-
-						for(int i=snp_pos+1;i<REF_dna.length();++i){
-
-							if(REF_dna[i] != ALT_dna[i]){
-
-								vcf_entry v  = {
-													chr,
-													pos + i,
-													REF_dna.substr(i,1),
-													ALT_dna.substr(i,1),
-													false
-									};
-
-								VCF.push_back(v);
+								}
 
 							}
 
-						}
+						}else{
 
-					}else{
+							//non-isolated SNPs are on the left
 
-						//non-isolated SNPs are on the left
+							for(int i=0;i<snp_pos;++i){
 
-						for(int i=0;i<snp_pos;++i){
+								if(REF_dna[i] != ALT_dna[i]){
 
-							if(REF_dna[i] != ALT_dna[i]){
+									vcf_entry v  = {
+														chr,
+														pos + i,
+														REF_dna.substr(i,1),
+														ALT_dna.substr(i,1),
+														false
+										};
 
-								vcf_entry v  = {
-													chr,
-													pos + i,
-													REF_dna.substr(i,1),
-													ALT_dna.substr(i,1),
-													false
-									};
+									VCF.push_back(v);
 
-								VCF.push_back(v);
+								}
 
 							}
 
