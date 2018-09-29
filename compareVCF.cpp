@@ -28,7 +28,7 @@ void help(){
 		"-h          Print this help." << endl <<
 		"-1 <arg>    Input VCF file to be validated. REQUIRED" << endl <<
 		"-2 <arg>    Ground truth VCF. REQUIRED" << endl <<
-		"-d <arg>    Indel window tolerance. Consider a true match if 2 indels are within <arg> bases" <<  indel_window_def << ")" << endl;
+		"-d <arg>    Indel window tolerance. Consider a true match if 2 indels are within <arg> bases (default = " <<  indel_window_def << ")" << endl;
 	exit(0);
 }
 
@@ -152,6 +152,12 @@ int main(int argc, char** argv){
 	auto vcf1 = read_vcf(vcf1_path);
 	auto vcf2 = read_vcf(vcf2_path);
 
+	/*for(auto v:vcf2){
+
+		cout << v.chr << "\t" << v.pos << "\t" << v.REF << "\t" << v.ALT << endl;
+
+	}*/
+
 	uint64_t TP_s = 0;
 	uint64_t FP_s = 0;
 	uint64_t FN_s = 0;
@@ -171,7 +177,8 @@ int main(int argc, char** argv){
 
 			auto it = vcf2.end();
 
-			if(	itL->indel and
+			if(	itL != vcf2.end() &&
+				itL->indel and
 				itL->chr.compare(v.chr)==0 and
 				std::abs( int(itL->pos)-int(v.pos) ) <= indel_window ){
 
@@ -179,7 +186,8 @@ int main(int argc, char** argv){
 
 			}
 
-			if(	itU->indel and
+			if(	itU != vcf2.end() &&
+				itU->indel and
 				itU->chr.compare(v.chr)==0 and
 				std::abs( int(itU->pos)-int(v.pos) )  <= indel_window  ){
 
