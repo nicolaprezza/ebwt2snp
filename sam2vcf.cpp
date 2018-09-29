@@ -22,7 +22,7 @@ bool non_isolated = true;
 
 void help(){
 
-	cout << "sam2vcf calls.sam" << endl << endl <<
+	cout << "sam2vcf [OPTIONS]" << endl << endl <<
 	"Converts the aligned calls (with bwa-mem) 'calls.sam' of clust2snp into a vcf file 'calls.sam.vcf'." << endl <<
 	"Options:" << endl <<
 		"-h          Print this help." << endl <<
