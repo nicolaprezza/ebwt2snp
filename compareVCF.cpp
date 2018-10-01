@@ -53,12 +53,6 @@ struct vcf_entry{
 
 	}
 
-	bool operator==(const vcf_entry & a) const{
-
-		return (chr.compare(a.chr)== 0) and pos == a.pos and REF.compare(a.REF) == 0 and ALT.compare(a.ALT) == 0;
-
-	}
-
 };
 
 
