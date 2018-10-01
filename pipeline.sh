@@ -1,7 +1,7 @@
-# Usage: pipeline.sh reads1.fast{q|a} reads2.fast{q|a} reference.fasta m
+# Usage: pipeline.sh reads1.fastq reads2.fastq reference.fasta m
 #
 # behaviour (the steps are skipped if the file they will produce already exists)
-# 1.  Converts input reads to fasta, if not already in fasta -> reads1.fasta reads2.fasta 
+# 1.  Converts input reads to fasta -> reads1.fasta reads2.fasta 
 # 2.  Adds the reverse complements to the reads and concatenates the two read files -> reads1.reads2.frc.fasta
 # 3.  Builds EGSA -> reads1.reads2.frc.fasta.gesa
 # 4.  Run eBWTclust -> reads1.reads2.frc.fasta.clusters 
