@@ -153,3 +153,26 @@ if [ ! -f ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam.vcf ]; then
 	sam2vcf -s ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam
 fi
 
+# 12. Generates VCF (bcftools calls) using BWA MEM + bcftools -> reads1.reads2.bcftools.vcf
+
+if [ ! -f ${WD}/${READS1}.${READS2}.bcftools.vcf ]; then
+	echo "Calling SNPs using BWA + bcftools. Storing SNPs to file "${WD}/${READS1}.${READS2}.bcftools.vcf" ..."
+	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS2}.fastq > ${WD}/alignment.tmp.sam
+	samtools view -b -S ${WD}/alignment.tmp.sam > ${WD}/alignment.tmp.bam
+	samtools sort ${WD}/alignment.tmp.bam > ${WD}/alignment.tmp.sorted.bam
+	samtools index ${WD}/alignment.tmp.sorted.bam
+	bcftools mpileup -f ${WD}/${READS1}.reference.fasta ${WD}/alignment.tmp.sorted.bam | bcftools call -mv -o ${WD}/${READS1}.${READS2}.bcftools.vcf
+	rm *.tmp*
+fi
+
+# 13. Generate report containing running times of eBWTclust pipeline, BWA+bcftools pipeline, and precision/recall of eBWTclust pipeline (using BWA+bcftools pipeline as ground truth)
+
+if [ ! -f ${WD}/${READS1}.${READS2}.report.${M}.tsv ]; then
+	compareVCF -1 ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam.vcf -2 ${WD}/${READS1}.${READS2}.bcftools.vcf
+fi
+
+
+
+
+
+
