@@ -51,6 +51,10 @@ M=$4
 TIME_EGSA=${WD}/egsa.time
 TIME_EBWTCLUST=${WD}/eBWTclust.time
 TIME_CLUST2SNP=${WD}/clust2snp_${M}.time
+TIME_BWAMEM=${WD}/bwamem.time
+TIME_BWAIDX=${WD}/bwaindex.time
+TIME_BCFTOOLS=${WD}/bcftools.time
+REPORT_OUT=${WD}/report_${M}
 
 echo "input 2: "${READS2}"."${EXT2}
 
@@ -111,6 +115,7 @@ if [ ! -f ${WD}/${READS1}.${READS2}.frc.${M}.snp.fastq ]; then
 	snp2fastq ${WD}/${READS1}.${READS2}.frc.${M}.snp
 fi
 
+
 # 7.  Builds BWA MEM index of reference.fasta -> reference.fasta.{amb,ann,bwt,fai,pac,sa} files
 
 if [ ! -f ${WD}/${REF}.amb ]; then
@@ -136,14 +141,14 @@ fi
 
 if [ ! -f ${WD}/${READS1}.reference.fasta.amb ]; then
 	echo "Indexing "${WD}/${READS1}.reference.fasta" (BWA) ..."
-	bwa index ${WD}/${READS1}.reference.fasta
+	/usr/bin/time -v bwa index ${WD}/${READS1}.reference.fasta > ${TIME_BWAIDX} 2>&1
 fi
 
 # 10.  Aligns reads1.reads2.frc.<m>.snp.fastq on reads1.reference.fasta -> reads1.reads2.frc.<m>.snp.sam
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam ]; then
 	echo "Aligning "${WD}/${READS1}.${READS2}.frc.${M}.snp.fastq" on "${WD}/${READS1}.reference.fasta" ..."
-	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS1}.${READS2}.frc.${M}.snp.fastq > ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam
+	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS1}.${READS2}.frc.${M}.snp.fastq > ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam 
 fi
 
 # 11. Generates VCF (eBWTclust calls) using sam2vcf -> reads1.reads2.frc.<m>.snp.sam.vcf
@@ -157,18 +162,18 @@ fi
 
 if [ ! -f ${WD}/${READS1}.${READS2}.bcftools.vcf ]; then
 	echo "Calling SNPs using BWA + bcftools. Storing SNPs to file "${WD}/${READS1}.${READS2}.bcftools.vcf" ..."
-	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS2}.fastq > ${WD}/alignment.tmp.sam
-	samtools view -b -S ${WD}/alignment.tmp.sam > ${WD}/alignment.tmp.bam
-	samtools sort ${WD}/alignment.tmp.bam > ${WD}/alignment.tmp.sorted.bam
-	samtools index ${WD}/alignment.tmp.sorted.bam
-	bcftools mpileup -f ${WD}/${READS1}.reference.fasta ${WD}/alignment.tmp.sorted.bam | bcftools call -mv -o ${WD}/${READS1}.${READS2}.bcftools.vcf
+	/usr/bin/time -v bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS2}.fastq > ${WD}/alignment.tmp.sam 2> ${TIME_BWAMEM}
+	/usr/bin/time -v samtools view -b -S ${WD}/alignment.tmp.sam > ${WD}/alignment.tmp.bam 2>> ${TIME_BCFTOOLS}
+	/usr/bin/time -v samtools sort ${WD}/alignment.tmp.bam > ${WD}/alignment.tmp.sorted.bam 2>> ${TIME_BCFTOOLS}
+	/usr/bin/time -v samtools index ${WD}/alignment.tmp.sorted.bam 2>> ${TIME_BCFTOOLS}
+	/usr/bin/time -v bcftools mpileup -f ${WD}/${READS1}.reference.fasta ${WD}/alignment.tmp.sorted.bam | bcftools call -mv -o ${WD}/${READS1}.${READS2}.bcftools.vcf 2>> ${TIME_BCFTOOLS}
 	rm *.tmp*
 fi
 
 # 13. Generate report containing running times of eBWTclust pipeline, BWA+bcftools pipeline, and precision/recall of eBWTclust pipeline (using BWA+bcftools pipeline as ground truth)
 
 if [ ! -f ${WD}/${READS1}.${READS2}.report.${M}.tsv ]; then
-	compareVCF -1 ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam.vcf -2 ${WD}/${READS1}.${READS2}.bcftools.vcf
+	compareVCF -1 ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam.vcf -2 ${WD}/${READS1}.${READS2}.bcftools.vcf > ${REPORT_OUT}
 fi
 
 
