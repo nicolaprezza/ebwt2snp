@@ -42,24 +42,46 @@ struct vcf_entry{
 
 	bool indel;
 
+	bool flag;
+
 	bool operator<(const vcf_entry & a) const{
 
 		if(chr.compare(a.chr) < 0 ) return true;
 		else if(chr.compare(a.chr) == 0 ){
 
+			if(pos == a.pos){
+
+				string snp1 = REF;
+				snp1.append(ALT);
+
+				string snp2 = a.REF;
+				snp2.append(a.ALT);
+
+				return snp1.compare(snp2) < 0;
+
+			}
+
 			return pos < a.pos;
 
-		}else return false;
+		}
+
+		return false;
+
+	}
+
+	bool operator==(const vcf_entry & a) const{
+
+		return chr.compare(a.chr)==0 and pos == a.pos and REF.compare(a.REF) == 0 and ALT.compare(a.ALT) == 0;
 
 	}
 
 };
 
 
-set<vcf_entry> read_vcf(string path){
+vector<vcf_entry> read_vcf(string path){
 
 
-	set<vcf_entry> vcf;
+	vector<vcf_entry> vcf;
 
 	ifstream is(path);
 
@@ -85,19 +107,25 @@ set<vcf_entry> read_vcf(string path){
 
 			uint64_t pos = atoi(pos_s.c_str());
 
-			vcf.insert(
+			string ALT;
+			std::istringstream iss2(line);
 
-				{
+			while(getline(iss2,ALT,',')){
+				vcf.push_back(
 
-					chr,
-					pos,
-					ref,
-					alt,
-					(ref.length()>1 or alt.length()>1)
+					{
 
-				}
+						chr,
+						pos,
+						ref,
+						ALT,
+						(ref.length()>1 or alt.length()>1),
+						false
 
-			);
+					}
+
+				);
+			}
 
 		}
 
@@ -146,6 +174,9 @@ int main(int argc, char** argv){
 	auto vcf1 = read_vcf(vcf1_path);
 	auto vcf2 = read_vcf(vcf2_path);
 
+	sort(vcf1.begin(),vcf1.end());
+	sort(vcf2.begin(),vcf2.end());
+
 	/*for(auto v:vcf2){
 
 		cout << v.chr << "\t" << v.pos << "\t" << v.REF << "\t" << v.ALT << endl;
@@ -160,60 +191,55 @@ int main(int argc, char** argv){
 	uint64_t FP_i = 0;
 	uint64_t FN_i = 0;
 
-	for(auto v:vcf1){
+	for(auto & v:vcf1){
 
 		if(v.indel){
 
-			auto itL = vcf2.lower_bound(v);
-			auto itU = vcf2.upper_bound(v);
+			vcf_entry cp = v;
+			cp.pos = cp.pos >= indel_window ? cp.pos - indel_window : 0;
 
-			//find matching indel (before or after
+			auto it = std::lower_bound(vcf2.begin(), vcf2.end(), cp);
 
-			auto it = vcf2.end();
+			//find matching indels
 
-			if(	itL != vcf2.end() &&
-				itL->indel and
-				itL->chr.compare(v.chr)==0 and
-				std::abs( int(itL->pos)-int(v.pos) ) <= indel_window ){
+			while(it < vcf2.end() && it->chr.compare(v.chr)==0 && it->pos <= v.pos + indel_window ){
 
-				it = itL;
+				if(it->indel){
+					v.flag = true;
+					it->flag = true;
+				}
 
-			}
-
-			if(	itU != vcf2.end() &&
-				itU->indel and
-				itU->chr.compare(v.chr)==0 and
-				std::abs( int(itU->pos)-int(v.pos) )  <= indel_window  ){
-
-				it = itU;
-
-			}
-
-			if(it != vcf2.end()){//found
-
-				TP_i++;
-				vcf2.erase(it);
-
-			}else{//not found
-
-				FP_i++;
+				it++;
 
 			}
 
 		}else{
 
-			auto it = vcf2.find(v);
+			auto it = std::find(vcf2.begin(), vcf2.end(), v);
 
 			if(it != vcf2.end()){//found
 
-				TP_s++;
-				vcf2.erase(it);
+				//matched
+				v.flag = true;
+				it->flag = true;
 
-			}else{//not found
+			}//else: nothing
 
-				FP_s++;
+		}
 
-			}
+	}
+
+	for(auto v:vcf1){
+
+		if(v.indel){
+
+			TP_i += v.flag;
+			FP_i += (not v.flag);
+
+		}else{
+
+			TP_s += v.flag;
+			FP_s += (not v.flag);
 
 		}
 
@@ -221,8 +247,15 @@ int main(int argc, char** argv){
 
 	for(auto v:vcf2){
 
-		FN_i += v.indel;
-		FN_s += (not v.indel);
+		if(v.indel){
+
+			FN_i += (not v.flag);
+
+		}else{
+
+			FN_s += (not v.flag);
+
+		}
 
 	}
 
