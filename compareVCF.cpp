@@ -80,7 +80,6 @@ struct vcf_entry{
 
 vector<vcf_entry> read_vcf(string path){
 
-
 	vector<vcf_entry> vcf;
 
 	ifstream is(path);
@@ -108,7 +107,7 @@ vector<vcf_entry> read_vcf(string path){
 			uint64_t pos = atoi(pos_s.c_str());
 
 			string ALT;
-			std::istringstream iss2(line);
+			std::istringstream iss2(alt);
 
 			while(getline(iss2,ALT,',')){
 				vcf.push_back(
@@ -119,7 +118,7 @@ vector<vcf_entry> read_vcf(string path){
 						pos,
 						ref,
 						ALT,
-						(ref.length()>1 or alt.length()>1),
+						(ref.length()>1 or ALT.length()>1),
 						false
 
 					}
