@@ -129,7 +129,7 @@ if [ ! -f ${WD}/${READS1}.reference.fasta ]; then
 	echo "Computing reference of "${READS1}". Storing it to file "${WD}/${READS1}.reference.fasta" ..."
 	bwa mem ${WD}/${REF} ${WD}/${READS1}.fastq > ${WD}/alignment.tmp.sam
 	samtools view -b -S ${WD}/alignment.tmp.sam > ${WD}/alignment.tmp.bam
-	samtools sort ${WD}/alignment.tmp.bam > ${WD}/alignment.tmp.sorted.bam
+	samtools sort ${WD}/alignment.tmp.bam ${WD}/alignment.tmp.sorted
 	samtools index ${WD}/alignment.tmp.sorted.bam
 
 	#OLD SAMTOOLS/BCFTOOLS
@@ -168,7 +168,7 @@ if [ ! -f ${WD}/${READS1}.${READS2}.bcftools.vcf ]; then
 	echo "Calling SNPs using BWA + bcftools. Storing SNPs to file "${WD}/${READS1}.${READS2}.bcftools.vcf" ..."
 	/usr/bin/time -v bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS2}.fastq > ${WD}/alignment.tmp.sam 2> ${TIME_BWAMEM}
 	/usr/bin/time -v samtools view -b -S ${WD}/alignment.tmp.sam > ${WD}/alignment.tmp.bam 2>> ${TIME_BCFTOOLS}
-	/usr/bin/time -v samtools sort ${WD}/alignment.tmp.bam > ${WD}/alignment.tmp.sorted.bam 2>> ${TIME_BCFTOOLS}
+	/usr/bin/time -v samtools sort ${WD}/alignment.tmp.bam ${WD}/alignment.tmp.sorted 2>> ${TIME_BCFTOOLS}
 	/usr/bin/time -v samtools index ${WD}/alignment.tmp.sorted.bam 2>> ${TIME_BCFTOOLS}
 
 	#OLD SAMTOOLS/BCFTOOLS
