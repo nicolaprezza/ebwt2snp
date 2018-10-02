@@ -40,6 +40,10 @@ int max_gap_def = 10;
 int consensus_reads = 0;
 int consensus_reads_def = 3;
 
+//max tolerated errors in left-contexts while building consensus
+int max_err_def = 3;
+int max_err = 0;
+
 string input;
 uint64_t nr_reads1 = 0;
 
@@ -65,6 +69,7 @@ void help(){
 	"            two variants are represented at least <arg> times in the reads.  The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
 	"-c <arg>    Extract this maximum number of reads per individual to compute consensus (default: " << consensus_reads_def << ")."<< endl <<
+	"-e <arg>    Max tolerated number of errors while computing consensus (default: " << max_err_def << ")."<< endl <<
 	"-p <arg>    Automatically choose max cluster length so that this fraction of bases is analyzed (default: " << endl <<
 	"            " << pval_def << ")."<< endl <<
 	"-M <arg>    Maximum cluster length. This could be overwritten by the value automatically computed using" << endl <<
@@ -318,6 +323,18 @@ string consensus(vector<string> & S){
 	if(S.size()==0) return "";
 	if(S.size()==1) return S[0];
 
+	int E = 0;
+
+	for(int i=0;i<S.size()-1;++i){
+
+		int d = dH(S[i],S[i+1]);
+
+		E = d>E ? d : E;
+
+	}
+
+	if(E>max_err) return "";
+
 	string C = S[0];
 
 	for(uint64_t i = 0;i<C.length();++i) C[i] = consensus(S,i);
@@ -508,17 +525,21 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 		string left_0_consensus = consensus(left_0);
 		string left_1_consensus = consensus(left_1);
 
-		uint64_t r_idx = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.right_context_idx) );
+		if(left_0_consensus.size()>0 and left_1_consensus.size()>0){
 
-		out.push_back(
+			uint64_t r_idx = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.right_context_idx) );
 
-			{
-				left_0_consensus,
-				left_1_consensus,
-				reads[r_idx].substr(v.right_context_pos,k_right),
-			}
+			out.push_back(
 
-		);
+				{
+					left_0_consensus,
+					left_1_consensus,
+					reads[r_idx].substr(v.right_context_pos,k_right),
+				}
+
+			);
+
+		}
 
 		++idx;
 
@@ -885,7 +906,7 @@ int main(int argc, char** argv){
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:c:")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:c:e:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
@@ -923,12 +944,16 @@ int main(int argc, char** argv){
 			case 'v':
 				max_snvs = atoi(optarg);
 			break;
+			case 'e':
+				max_err = atof(optarg);
+			break;
 			default:
 				help();
 			return -1;
 		}
 	}
 
+	max_err = max_err==0?max_err_def:max_err;
 	consensus_reads = consensus_reads==0?consensus_reads_def:consensus_reads;
 	max_gap = max_gap==0?max_gap_def:max_gap;
 	max_clust_length = max_clust_length==0?max_clust_length_def:max_clust_length;

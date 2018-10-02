@@ -47,18 +47,31 @@ struct vcf_entry{
 		if(chr.compare(a.chr) < 0 ) return true;
 		else if(chr.compare(a.chr) == 0 ){
 
+			if(pos == a.pos){
+
+				string snp1 = REF;
+				snp1.append(ALT);
+
+				string snp2 = a.REF;
+				snp2.append(a.ALT);
+
+				return snp1.compare(snp2) < 0;
+
+			}
+
 			return pos < a.pos;
 
-		}else return false;
+		}
+
+		return false;
 
 	}
 
 	bool operator==(const vcf_entry & a) const{
 
-		return (chr.compare(a.chr)== 0) and pos == a.pos and REF.compare(a.REF) == 0 and ALT.compare(a.ALT) == 0;
+		return chr.compare(a.chr)==0 and pos == a.pos and REF.compare(a.REF) == 0 and ALT.compare(a.ALT) == 0;
 
 	}
-
 
 };
 
@@ -156,7 +169,6 @@ int main(int argc, char** argv){
 
 			}
 
-			//cout << type << " '" << REF << "' -> '" << ALT << "'" << flush;
 
 			p = strtok((char*)tmp2.c_str(), "_");
 			p = strtok(NULL, "_");
