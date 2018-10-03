@@ -41,7 +41,7 @@ int consensus_reads = 0;
 int consensus_reads_def = 3;
 
 //max tolerated errors in left-contexts while building consensus
-int max_err_def = 3;
+int max_err_def = 5;
 int max_err = 0;
 
 string input;
@@ -69,7 +69,7 @@ void help(){
 	"            two variants are represented at least <arg> times in the reads.  The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
 	"-c <arg>    Extract this maximum number of reads per individual to compute consensus (default: " << consensus_reads_def << ")."<< endl <<
-	"-e <arg>    Max tolerated number of errors while computing consensus (default: " << max_err_def << ")."<< endl <<
+	//"-e <arg>    Max tolerated number of errors while computing consensus (default: " << max_err_def << ")."<< endl <<
 	"-p <arg>    Automatically choose max cluster length so that this fraction of bases is analyzed (default: " << endl <<
 	"            " << pval_def << ")."<< endl <<
 	"-M <arg>    Maximum cluster length. This could be overwritten by the value automatically computed using" << endl <<
@@ -323,7 +323,7 @@ string consensus(vector<string> & S){
 	if(S.size()==0) return "";
 	if(S.size()==1) return S[0];
 
-	int E = 0;
+	/*int E = 0;
 
 	for(int i=0;i<S.size()-1;++i){
 
@@ -333,7 +333,7 @@ string consensus(vector<string> & S){
 
 	}
 
-	if(E>max_err) return "";
+	if(E>max_err) return "";*/
 
 	string C = S[0];
 
@@ -906,7 +906,7 @@ int main(int argc, char** argv){
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:c:e:")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:c:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
