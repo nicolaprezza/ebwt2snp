@@ -88,9 +88,11 @@ fi
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.fasta.gesa ]; then
 	echo "building EGSA ..."
-	/usr/bin/time -v egsa -vvv -c ${WD}/${READS1}.${READS2}.frc.fasta 0 > ${TIME_EGSA} 2>&1
-	rm -rf ${WD}/tmp
-	rm -rf ${WD}/partition
+	#/usr/bin/time -v egsa -vvv -c ${WD}/${READS1}.${READS2}.frc.fasta 0 > ${TIME_EGSA} 2>&1
+	/usr/bin/time -v gsufsort ${WD}/${READS1}.${READS2}.frc.fasta --gesa 4 4 4 > ${TIME_EGSA} 2>&1
+	mv ${WD}/${READS1}.${READS2}.frc.fasta.4.4.4.1.gesa ${WD}/${READS1}.${READS2}.frc.fasta.gesa
+	#rm -rf ${WD}/tmp
+	#rm -rf ${WD}/partition
 fi
 
 # 4.  Run eBWTclust -> reads1.reads2.frc.fasta.clusters 
@@ -138,7 +140,7 @@ if [ ! -f ${WD}/${READS1}.reference.fasta ]; then
 	
 	bgzip ${WD}/calls.tmp.vcf
 	vcf2fasta.sh ${WD}/calls.tmp.vcf.gz ${WD}/${REF} > ${WD}/${READS1}.reference.fasta
-	rm *.tmp*
+	rm ${WD}/*.tmp*
 fi
 
 # 9.  Builds BWA MEM index of reads1.reference.fasta -> reads1.reference.fasta.{amb,ann,bwt,fai,pac,sa} files
@@ -175,7 +177,7 @@ if [ ! -f ${WD}/${READS1}.${READS2}.bcftools.vcf ]; then
 	/usr/bin/time -v samtools mpileup -uD -f ${WD}/${READS1}.reference.fasta ${WD}/alignment.tmp.sorted.bam > ${WD}/mpileup.tmp 2>> ${TIME_BCFTOOLS}
 	/usr/bin/time -v bcftools view -vc ${WD}/mpileup.tmp > ${WD}/${READS1}.${READS2}.bcftools.vcf
 
-	rm *.tmp*
+	rm ${WD}/*.tmp*
 fi
 
 # 13. Generate report containing running times of eBWTclust pipeline, BWA+bcftools pipeline, and precision/recall of eBWTclust pipeline (using BWA+bcftools pipeline as ground truth)
