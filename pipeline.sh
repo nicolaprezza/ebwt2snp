@@ -92,14 +92,16 @@ if [ ! -f ${WD}/${READS1}.${READS2}.frc.fasta ]; then
 fi
 
 # 3.  If EGSA/BCR files do not exist (both), then builds EGSA -> reads1.reads2.frc.fasta.gesa
-if [[ ! -f ${WD}/${READS1}.${READS2}.frc.fasta.gesa && ! -f ${WD}/${READS1}.${READS2}.frc.fasta.out ]]; then
-	echo "building EGSA ..."
-	#/usr/bin/time -v egsa -vvv -c ${WD}/${READS1}.${READS2}.frc.fasta 0 > ${TIME_EGSA} 2>&1
-	/usr/bin/time -v gsufsort ${WD}/${READS1}.${READS2}.frc.fasta --gesa ${GSAtext} ${GSAsuff} ${LCP} > ${TIME_EGSA} 2>&1
-	mv ${WD}/${READS1}.${READS2}.frc.fasta.${GSAtext}.${GSAsuff}.${LCP}.1.gesa ${WD}/${READS1}.${READS2}.frc.fasta.gesa
-	
-	rm -rf ${WD}/tmp
-	rm -rf ${WD}/partition
+if [ ! -f ${WD}/${READS1}.${READS2}.frc.fasta.gesa ]; then
+	if [ ! -f ${WD}/${READS1}.${READS2}.frc.fasta.out ]; then
+		echo "building EGSA ..."
+		#/usr/bin/time -v egsa -vvv -c ${WD}/${READS1}.${READS2}.frc.fasta 0 > ${TIME_EGSA} 2>&1
+		/usr/bin/time -v gsufsort ${WD}/${READS1}.${READS2}.frc.fasta --gesa ${GSAtext} ${GSAsuff} ${LCP} > ${TIME_EGSA} 2>&1
+		mv ${WD}/${READS1}.${READS2}.frc.fasta.${GSAtext}.${GSAsuff}.${LCP}.1.gesa ${WD}/${READS1}.${READS2}.frc.fasta.gesa
+		
+		rm -rf ${WD}/tmp
+		rm -rf ${WD}/partition
+	fi
 fi
 
 # 4.  Run eBWTclust -> reads1.reads2.frc.fasta.clusters 
