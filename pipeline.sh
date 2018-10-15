@@ -108,7 +108,7 @@ fi
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.fasta.clusters ]; then
 	echo "running eBWTclust ..."
-	/usr/bin/time -v clust2snp -i ${WD}/${READS1}.${READS2}.frc.fasta -n $N -m $M -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_EBWTCLUST} 2>&1
+	/usr/bin/time -v eBWTclust -i ${WD}/${READS1}.${READS2}.frc.fasta -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_EBWTCLUST} 2>&1
 fi
 
 # 5.  Run clust2snp with parameter m -> reads1.reads2.frc.<m>.snp
