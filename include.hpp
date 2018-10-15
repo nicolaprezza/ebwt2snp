@@ -69,10 +69,12 @@ public:
 
 				bcr = true;
 
-			}
+			}else{
 
-			cout << "Error: missing index files." << endl;
-			exit(1);
+				cout << "Error: missing index files." << endl;
+				exit(1);
+
+			}
 
 		}
 
