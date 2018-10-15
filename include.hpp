@@ -12,6 +12,8 @@ typedef __int128 uint128_t;
 
 typedef pair<uint64_t,uint32_t> coordinate;//suffix array coordinate (text, suff)
 
+
+
 /*
  * EGSA
  */
@@ -23,6 +25,196 @@ typedef struct{
 	int8		bwt;
 
 } t_GSA;
+
+/*
+ * this class abstracts the EGSA type and allows reading from different formats (EGSA/BCR)
+ */
+class egsa_stream{
+
+public:
+
+	/*
+	 * input: reads.fasta
+	 *
+	 * automatically detects the index files and format
+	 *
+	 */
+	egsa_stream(string & input_path){
+
+		string egsa_path = input_path;
+		egsa_path.append(".gesa");
+
+		EGSA.open(egsa_path, ios::in | ios::binary);
+
+		if(EGSA.is_open()){
+
+			egsa = true;
+
+		}else{//else try BCR
+
+			string LCP_path = input_path;
+			LCP_path.append(".out.lcp");
+
+			string BWT_path = input_path;
+			BWT_path.append(".out");
+
+			string GSA_path = input_path;
+			GSA_path.append(".out.pairSA");
+
+			LCP.open(LCP_path, ios::in | ios::binary);
+			BWT.open(BWT_path, ios::in | ios::binary);
+			GSA.open(GSA_path, ios::in | ios::binary);
+
+			if(LCP.is_open() and BWT.is_open() and GSA.is_open()){
+
+				bcr = true;
+
+			}
+
+			cout << "Error: missing index files." << endl;
+			exit(1);
+
+		}
+
+	}
+
+	/*
+	 * returns true iff index files exist in the input folder
+	 */
+	bool index_exists(){
+
+		return egsa or bcr;
+
+	}
+
+	bool eof(){
+
+		if(egsa){
+
+			return EGSA.eof();
+
+		}else if (bcr){
+
+			return LCP.eof();
+
+		}
+
+		cout << "Error: missing index files." << endl;
+		exit(1);
+
+	}
+
+	/*
+	 * overwrite default type byte-sizes (LCP, document array, suffix in read)
+	 */
+	void set_bytesizes(int lcp_size, int da_size, int suff_size){
+
+		this->lcp_size = lcp_size;
+		this->da_size = da_size;
+		this->suff_size = suff_size;
+
+	}
+
+	t_GSA read_el(){
+
+		t_GSA e;
+
+		if(egsa){
+
+			switch(da_size){
+
+				case 1 : uint8_t x8; EGSA.read((char*)&x8, 1); e.text = x8;  break;
+				case 2 : uint16_t x16; EGSA.read((char*)&x16, 2); e.text = x16; break;
+				case 4 : uint32_t x32; EGSA.read((char*)&x32, 4); e.text = x32; break;
+				case 8 : uint64_t x64; EGSA.read((char*)&x64, 8); e.text = x64; break;
+
+			}
+
+			switch(suff_size){
+
+				case 1 : uint8_t x8; EGSA.read((char*)&x8, 1); e.suff = x8;  break;
+				case 2 : uint16_t x16; EGSA.read((char*)&x16, 2); e.suff = x16; break;
+				case 4 : uint32_t x32; EGSA.read((char*)&x32, 4); e.suff = x32; break;
+				case 8 : uint64_t x64; EGSA.read((char*)&x64, 8); e.suff = x64; break;
+
+			}
+
+			switch(lcp_size){
+
+				case 1 : uint8_t x8; EGSA.read((char*)&x8, 1); e.lcp = x8;  break;
+				case 2 : uint16_t x16; EGSA.read((char*)&x16, 2); e.lcp = x16; break;
+				case 4 : uint32_t x32; EGSA.read((char*)&x32, 4); e.lcp = x32; break;
+				case 8 : uint64_t x64; EGSA.read((char*)&x64, 8); e.lcp = x64; break;
+
+			}
+
+			uint8_t x8;
+			EGSA.read((char*)&x8, 1);
+			e.bwt = x8;
+
+		}else if(bcr){
+
+			switch(suff_size){
+
+				case 1 : uint8_t x8; GSA.read((char*)&x8, 1); e.suff = x8;  break;
+				case 2 : uint16_t x16; GSA.read((char*)&x16, 2); e.suff = x16; break;
+				case 4 : uint32_t x32; GSA.read((char*)&x32, 4); e.suff = x32; break;
+				case 8 : uint64_t x64; GSA.read((char*)&x64, 8); e.suff = x64; break;
+
+			}
+
+			switch(da_size){
+
+				case 1 : uint8_t x8; GSA.read((char*)&x8, 1); e.text = x8;  break;
+				case 2 : uint16_t x16; GSA.read((char*)&x16, 2); e.text = x16; break;
+				case 4 : uint32_t x32; GSA.read((char*)&x32, 4); e.text = x32; break;
+				case 8 : uint64_t x64; GSA.read((char*)&x64, 8); e.text = x64; break;
+
+			}
+
+			switch(lcp_size){
+
+				case 1 : uint8_t x8; LCP.read((char*)&x8, 1); e.lcp = x8;  break;
+				case 2 : uint16_t x16; LCP.read((char*)&x16, 2); e.lcp = x16; break;
+				case 4 : uint32_t x32; LCP.read((char*)&x32, 4); e.lcp = x32; break;
+				case 8 : uint64_t x64; LCP.read((char*)&x64, 8); e.lcp = x64; break;
+
+			}
+
+			uint8_t x8;
+			BWT.read((char*)&x8, 1);
+			e.bwt = x8;
+
+		}else{
+
+			cout << "Error: missing index files." << endl;
+			exit(1);
+
+		}
+
+		return e;
+
+	}
+
+private:
+
+	bool egsa = false;
+	bool bcr = false;
+
+	//byte size of components
+	int lcp_size = 1; //LCP values
+	int da_size = 4; //document array (read number)
+	int suff_size = 1; //position inside read
+
+	//the EGSA index
+	ifstream EGSA;
+
+	//the BCR index
+	ifstream LCP;
+	ifstream BWT;
+	ifstream GSA;//pairs
+
+};
 
 t_GSA read_el(ifstream & egsa, bool bcr){
 

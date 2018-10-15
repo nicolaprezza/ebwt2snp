@@ -20,23 +20,31 @@ int K_def = 16; //require an LCP of at least k inside clusters
 int k = 0;
 string input;
 
-int min_len=0;
+int lcp_def = 1;
+int da_def = 4;
+int pos_def = 1;
 
-//we require that inside a cluster, LCP[i+1] >= LCP[i] + delta
-bool bcr = false;
+int lcp = 0;
+int da = 0;
+int pos = 0;
+
+
+int min_len=0;
 
 void help(){
 
 	cout << "eBWTclust [options]" << endl <<
 	"Options:" << endl <<
-	"-h          Print this help" << endl <<
-	"-i <arg>    Input fasta file (REQUIRED)" << endl <<
-	"-k <arg>    Minimum LCP required in clusters (default: " << K_def << ")" << endl <<
-	"-m <arg>    Discard clusters smaller than this value (default: " << min_def << ")" << endl <<
-//	"-b          Input index files are in BCR format (default: GESA format)" << endl << endl <<
+	"-h         Print this help" << endl <<
+	"-i <arg>   Input fasta file (REQUIRED)" << endl <<
+	"-k <arg>   Minimum LCP required in clusters (default: " << K_def << ")" << endl <<
+	"-m <arg>   Discard clusters smaller than this value (default: " << min_def << ")" << endl <<
+	"-x <arg>   Byte size of LCP integers in input EGSA/BCR file (default: " << lcp_def <<  ")." << endl <<
+	"-y <arg>   Byte size of DA integers (read number) in input EGSA/BCR file (default: " << da_def <<  ")." << endl <<
+	"-z <arg>   Byte size of pos integers (position in read) in input EGSA/BCR file (default: " << pos_def <<  ")." << endl << endl <<
 
 	"\nTo run eBWTclust, you must first build the Enhanced Generalized Suffix Array of the input" << endl <<
-	"sequences. The EGSA must be stored in the input file's folder adding extension .egsa to " << endl <<
+	"sequences. The EGSA must be stored in the input file's folder adding extension .gesa to " << endl <<
 	"the name of the input file  (github.com/felipelouza/egsa). Output  is stored in " << endl <<
 	"reads.fasta.clusters." << endl;
 	 exit(0);
@@ -56,7 +64,7 @@ void append_entry(ofstream & out, uint64_t start, uint16_t length){
 /*
  * clusters = regions between local LCP minima (excluding tails where LCP < k)
  */
-void cluster_lm(ifstream & egsa,ofstream & out){
+void cluster_lm(egsa_stream & EGSA,ofstream & out){
 
 	uint64_t null = ~uint64_t(0);
 
@@ -67,8 +75,8 @@ void cluster_lm(ifstream & egsa,ofstream & out){
 	uint64_t prev_lcp = null;//previous LCP value
 
 	//find local minima in the LCP
-	t_GSA e1 = read_el(egsa, bcr);
-	t_GSA e2 = read_el(egsa, bcr);
+	t_GSA e1 = EGSA.read_el();
+	t_GSA e2 = EGSA.read_el();
 	t_GSA e3;
 
 	start = e1.lcp >= k ? 0 :
@@ -76,10 +84,10 @@ void cluster_lm(ifstream & egsa,ofstream & out){
 
 	i = 1;//index of e2
 
-	while(not egsa.eof()){
+	while(not EGSA.eof()){
 
 		//read next value
-		e3 = read_el(egsa, bcr);
+		e3 = EGSA.read_el();
 
 		//cout << e3.text << " " << e3.suff << " " << e3.lcp << " " << char(e3.bwt) << endl;
 
@@ -128,25 +136,28 @@ int main(int argc, char** argv){
 	if(argc < 2) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hk:i:m:")) != -1){
+	while ((opt = getopt(argc, argv, "hk:i:m:x:y:z:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
 			break;
-			case 'b':
-				bcr = true;
-			break;
 			case 'k':
 				k = atoi(optarg);
-				//cout << "k = " << k << "\n";
 			break;
 			case 'm':
 				min_len = atoi(optarg);
-				//cout << "k = " << k << "\n";
 			break;
 			case 'i':
 				input = string(optarg);
-				//cout << "input = " << input << "\n";
+			break;
+			case 'x':
+				lcp = atoi(optarg);
+			break;
+			case 'y':
+				da = atoi(optarg);
+			break;
+			case 'z':
+				pos = atoi(optarg);
 			break;
 			default:
 				help();
@@ -154,33 +165,27 @@ int main(int argc, char** argv){
 		}
 	}
 
+	lcp = lcp==0?lcp_def:lcp;
+	da = da==0?da_def:da;
+	pos = pos==0?pos_def:pos;
+
 	k = k==0?K_def:k;
 	min_len = min_len==0?min_def:min_len;
 
 	if(input.compare("")==0) help();
 
-	string egsa_path = input;
-	egsa_path.append(".gesa");
+	egsa_stream EGSA(input);
+	EGSA.set_bytesizes(lcp,da,pos);
 
-	cout << "This is eBWTclust. Input index file: " << egsa_path << endl;
-
-	ifstream egsa;
-
-	egsa.open(egsa_path, ios::in | ios::binary);
-
-	if(not egsa.is_open()){
-		cout << "Error: missing file " <<egsa_path << endl << endl;
-		help();
-	}
+	cout << "This is eBWTclust. Input file: " << input << endl;
 
 	string filename_out = input;
 	filename_out.append(".clusters");
 	ofstream out;
 	out.open(filename_out, ios::out | ios::binary);
 
-	cluster_lm(egsa,out);
+	cluster_lm(EGSA,out);
 
-	egsa.close();
 	out.close();
 
 }

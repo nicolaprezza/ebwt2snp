@@ -51,6 +51,14 @@ bool bcr = false;
 
 bool discoSNP=true;
 
+int lcp_def = 1;
+int da_def = 4;
+int pos_def = 1;
+
+int lcp = 0;
+int da = 0;
+int pos = 0;
+
 uint64_t n_clust = 0; //number of clusters
 uint64_t n_bases = 0; //number of bases in clusters
 
@@ -73,7 +81,11 @@ void help(){
 	"-p <arg>    Automatically choose max cluster length so that this fraction of bases is analyzed (default: " << endl <<
 	"            " << pval_def << ")."<< endl <<
 	"-M <arg>    Maximum cluster length. This could be overwritten by the value automatically computed using" << endl <<
-	"            the fraction specified with option -p (default: " << max_clust_length_def << ")."<< endl << endl <<
+	"            the fraction specified with option -p (default: " << max_clust_length_def << ")."<< endl <<
+	"-x <arg>    Byte size of LCP integers in input EGSA/BCR file (default: " << lcp_def <<  ")." << endl <<
+	"-y <arg>    Byte size of DA integers (read number) in input EGSA/BCR file (default: " << da_def <<  ")." << endl <<
+	"-z <arg>    Byte size of pos integers (position in read) in input EGSA/BCR file (default: " << pos_def <<  ")." << endl << endl <<
+
 
 	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input sequences," << endl <<
 	"stored in a file with extension .gesa and with the same name of the input file" << endl <<
@@ -714,10 +726,7 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
  * scans EGSA, clusters and finds interesting clusters. In chunks, extracts the reads
  * from interesting clusters and aligns them.
  */
-void find_events(string & egsa_path, string & clusters_path, string fasta_path, string out_path){
-
-	ifstream egsa;
-	egsa.open(egsa_path, ios::in | ios::binary);
+void find_events(egsa_stream & EGSA, string & clusters_path, string fasta_path, string out_path){
 
 	ifstream clusters;
 	clusters.open(clusters_path, ios::in | ios::binary);
@@ -725,7 +734,7 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 	uint64_t i = 0;//position on suffix array
 
 	//read first egsa entry
-	t_GSA e = read_el(egsa, bcr);
+	t_GSA e = EGSA.read_el();
 
 	vector<candidate_variant> candidate_variants;
 
@@ -749,7 +758,7 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 
 			while(i < start){
 
-				e = read_el(egsa, bcr);
+				e = EGSA.read_el();
 				++i;
 
 			}
@@ -759,7 +768,7 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 			while(i < start+length){
 
 				gsa_cluster.push_back(e);
-				e = read_el(egsa, bcr);
+				e = EGSA.read_el();
 				++i;
 
 			}
@@ -800,7 +809,6 @@ void find_events(string & egsa_path, string & clusters_path, string fasta_path, 
 	to_file(output_variants, out_path);
 
 	clusters.close();
-	egsa.close();
 
 }
 
@@ -906,7 +914,7 @@ int main(int argc, char** argv){
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:c:")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:c:x:y:z:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
@@ -947,12 +955,24 @@ int main(int argc, char** argv){
 			case 'e':
 				max_err = atof(optarg);
 			break;
+			case 'x':
+				lcp = atoi(optarg);
+			break;
+			case 'y':
+				da = atoi(optarg);
+			break;
+			case 'z':
+				pos = atoi(optarg);
+			break;
 			default:
 				help();
 			return -1;
 		}
 	}
 
+	lcp = lcp==0?lcp_def:lcp;
+	da = da==0?da_def:da;
+	pos = pos==0?pos_def:pos;
 	max_err = max_err==0?max_err_def:max_err;
 	consensus_reads = consensus_reads==0?consensus_reads_def:consensus_reads;
 	max_gap = max_gap==0?max_gap_def:max_gap;
@@ -963,36 +983,13 @@ int main(int argc, char** argv){
 	max_snvs = max_snvs==0?max_snvs_def:max_snvs;
 	mcov_out = mcov_out==0?mcov_out_def:mcov_out;
 
-	/*if(pval <= 0 or pval > 1){
-
-		cout << "Error: argument of -p must be in (0,1]" << endl;
-		help();
-
-	}*/
-
 	if(input.compare("")==0 or nr_reads1 == 0) help();
 
-	string egsa_path = input;
-	egsa_path.append(".gesa");
-
-	{
-
-		ifstream ifs(egsa_path);
-
-		if(not ifs.good()){
-
-			cout << "\nERROR: Could not find EGSA file \"" << egsa_path << "\"" << endl << endl;
-			help();
-
-
-		}
-
-		ifs.close();
-
-	}
+	egsa_stream EGSA(input);
+	EGSA.set_bytesizes(lcp,da,pos);
 
 	cout << "This is clust2snp." << endl <<
-			"Input index file: " << egsa_path << endl <<
+			"Input file: " << input << endl <<
 			//"p-value : " << pval << endl <<
 			"Left-extending GSA ranges by " << k_left << " bases." << endl <<
 			"Right context length: at most " << k_right << " bases." << endl;
@@ -1022,7 +1019,7 @@ int main(int argc, char** argv){
 	cout << "Output events will be stored in " << filename_out << endl;
 
 	statistics(clusters_path);
-	find_events(egsa_path, clusters_path, input, filename_out);
+	find_events(EGSA, clusters_path, input, filename_out);
 
 	cout << "Done. " <<endl;
 
