@@ -41,7 +41,7 @@ int consensus_reads = 0;
 int consensus_reads_def = 3;
 
 //max tolerated errors in left-contexts while building consensus
-int max_err_def = 5;
+int max_err_def = 3;
 int max_err = 0;
 
 string input;
@@ -77,7 +77,7 @@ void help(){
 	"            two variants are represented at least <arg> times in the reads.  The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
 	"-c <arg>    Extract this maximum number of reads per individual to compute consensus (default: " << consensus_reads_def << ")."<< endl <<
-	//"-e <arg>    Max tolerated number of errors while computing consensus (default: " << max_err_def << ")."<< endl <<
+	"-e <arg>    Max tolerated number of errors while computing consensus (default: " << max_err_def << ")."<< endl <<
 	"-p <arg>    Automatically choose max cluster length so that this fraction of bases is analyzed (default: " << endl <<
 	"            " << pval_def << ")."<< endl <<
 	"-M <arg>    Maximum cluster length. This could be overwritten by the value automatically computed using" << endl <<
@@ -135,6 +135,9 @@ struct variant_t{
 	string left_context_1;
 
 	string right_context;
+
+	int support_0;
+	int support_1;
 
 };
 
@@ -323,35 +326,46 @@ unsigned char consensus(vector<string> & S, uint64_t i){
 
 }
 
-
 /*
  * input: vector of strings with the same length
  *
  * output: consensus string. At each position, choose the most represented letter. In case of ties, choose arbitrarily.
  *
  */
-string consensus(vector<string> & S){
+string consensus_(vector<string> & S){
 
 	if(S.size()==0) return "";
 	if(S.size()==1) return S[0];
-
-	/*int E = 0;
-
-	for(int i=0;i<S.size()-1;++i){
-
-		int d = dH(S[i],S[i+1]);
-
-		E = d>E ? d : E;
-
-	}
-
-	if(E>max_err) return "";*/
 
 	string C = S[0];
 
 	for(uint64_t i = 0;i<C.length();++i) C[i] = consensus(S,i);
 
 	return C;
+
+}
+
+/*
+ * input: vector of strings with the same length
+ *
+ * output: more advanced consensus. First, compute the consensus C with function consensus_. Then, extract only strings within distance max_err
+ * from C, and compute a new consensus (using again consensus_).
+ *
+ * return: consensus and a value indicating the number of strings from the original set S "supporting" the returned consensus.
+ *
+ */
+pair<string, int> consensus(vector<string> & S){
+
+	string C = consensus_(S);
+
+	vector<string> S1;
+
+	//compute how many strings in S have small Hamming distance from the computed consensus (i.e. they "support" the consensus)
+	for(auto s:S)
+		if(dH(C,s) <= max_err)
+			S1.push_back(s);
+
+	return {consensus_(S1), S1.size()};
 
 }
 
@@ -486,7 +500,7 @@ vector<candidate_variant> find_variants(vector<t_GSA> & gsa_cluster){
  */
 vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variants, string fasta_path){
 
-	vector<variant_t>  out;
+	vector<variant_t> out;
 
 	vector<uint64_t> read_ranks;
 
@@ -534,8 +548,11 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 
 		}
 
-		string left_0_consensus = consensus(left_0);
-		string left_1_consensus = consensus(left_1);
+		pair<string, int> C0 = consensus(left_0);
+		pair<string, int> C1 = consensus(left_1);
+
+		string left_0_consensus = C0.first;
+		string left_1_consensus = C1.first;
 
 		if(left_0_consensus.size()>0 and left_1_consensus.size()>0){
 
@@ -547,6 +564,8 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 					left_0_consensus,
 					left_1_consensus,
 					reads[r_idx].substr(v.right_context_pos,k_right),
+					C0.second,
+					C1.second
 				}
 
 			);
@@ -633,7 +652,8 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 
 			ID.append(snv_type);
 			ID.append("|");
-			ID.append("high");
+			ID.append(std::to_string(v.support_0));//we write the number of reads supporting this variant
+			//ID.append("high");
 			ID.append("|nb_pol_1");
 
 			out_file << ID << endl;
@@ -678,7 +698,8 @@ void to_file(vector<variant_t> & output_variants, string & out_path){
 			ID.append("_");
 			ID.append(snv_type);
 			ID.append("|");
-			ID.append("high");
+			ID.append(std::to_string(v.support_1));
+			//ID.append("high");
 			ID.append("|nb_pol_1");
 
 			out_file << ID << endl;
@@ -914,7 +935,7 @@ int main(int argc, char** argv){
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:c:x:y:z:")) != -1){
+	while ((opt = getopt(argc, argv, "hi:n:p:v:L:R:m:g:c:x:y:z:e:")) != -1){
 		switch (opt){
 			case 'h':
 				help();

@@ -84,6 +84,8 @@ void cluster_lm(egsa_stream & EGSA,ofstream & out){
 
 	i = 1;//index of e2
 
+	unsigned int n_clust_out = 0;//number of clusters in output
+
 	while(not EGSA.eof()){
 
 		//read next value
@@ -100,6 +102,7 @@ void cluster_lm(egsa_stream & EGSA,ofstream & out){
 
 			uint16_t length = (i - start) + 1; //this cluster ends in e2
 			append_entry(out, start, length);
+			n_clust_out++;
 
 			start = null;
 
@@ -124,10 +127,13 @@ void cluster_lm(egsa_stream & EGSA,ofstream & out){
 
 		uint16_t length = (i - start) + 1; //this cluster ends in e2
 		append_entry(out, start, length);
+		n_clust_out++;
 
 		start = null;
 
 	}
+
+	cout << "Done. " << n_clust_out << " clusters saved to output file." << endl;
 
 }
 
