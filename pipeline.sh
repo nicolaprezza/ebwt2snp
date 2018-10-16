@@ -1,4 +1,4 @@
-# Usage: pipeline.sh reads1.fastq reads2.fastq reference.fasta m
+# Usage: pipeline.sh reads1.fastq reads2.fastq reference.fasta c
 #
 # behaviour (the steps are skipped if the file they will produce already exists)
 # 1.  Converts input reads to fasta -> reads1.fasta reads2.fasta 
@@ -50,8 +50,11 @@ READS2="${READS2%.*}"
 #extract file name of reference
 REF=`basename $3`
 
-#parameter m in clust2snp
-M=$4
+#parameter -c in clust2snp (max reads in consensus. Ideally big, but bigger slows down computation)
+C=$4
+
+#parameter -m in clust2snp (we keep this fixed: at least 5 reads per individual in cluster)
+M=5
 
 TIME_EGSA=${WD}/egsa.time
 TIME_EBWTCLUST=${WD}/eBWTclust.time
@@ -111,19 +114,19 @@ if [ ! -f ${WD}/${READS1}.${READS2}.frc.fasta.clusters ]; then
 	/usr/bin/time -v eBWTclust -i ${WD}/${READS1}.${READS2}.frc.fasta -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_EBWTCLUST} 2>&1
 fi
 
-# 5.  Run clust2snp with parameter m -> reads1.reads2.frc.<m>.snp
+# 5.  Run clust2snp with parameters m, c -> reads1.reads2.frc.<c>.snp
 
-if [ ! -f ${WD}/${READS1}.${READS2}.frc.${M}.snp ]; then
+if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp ]; then
 	echo "running clust2snp ..."
-	/usr/bin/time -v clust2snp -i ${WD}/${READS1}.${READS2}.frc.fasta -n $N -m $M -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_CLUST2SNP} 2>&1
-	mv ${WD}/${READS1}.${READS2}.frc.snp ${WD}/${READS1}.${READS2}.frc.${M}.snp
+	/usr/bin/time -v clust2snp -i ${WD}/${READS1}.${READS2}.frc.fasta -n $N -m $M -c $C -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_CLUST2SNP} 2>&1
+	mv ${WD}/${READS1}.${READS2}.frc.snp ${WD}/${READS1}.${READS2}.frc.${C}.snp
 fi
 
 # 6.  Run snp2fastq -> reads1.reads2.frc.<m>.snp.fastq
 
-if [ ! -f ${WD}/${READS1}.${READS2}.frc.${M}.snp.fastq ]; then
+if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.fastq ]; then
 	echo "converting .snp to .fastq ..."
-	snp2fastq ${WD}/${READS1}.${READS2}.frc.${M}.snp
+	snp2fastq ${WD}/${READS1}.${READS2}.frc.${C}.snp
 fi
 
 
@@ -175,16 +178,16 @@ fi
 
 # 10.  Aligns reads1.reads2.frc.<m>.snp.fastq on reads1.reference.fasta -> reads1.reads2.frc.<m>.snp.sam
 
-if [ ! -f ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam ]; then
-	echo "Aligning "${WD}/${READS1}.${READS2}.frc.${M}.snp.fastq" on "${WD}/${READS1}.reference.fasta" ..."
-	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS1}.${READS2}.frc.${M}.snp.fastq > ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam 
+if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam ]; then
+	echo "Aligning "${WD}/${READS1}.${READS2}.frc.${C}.snp.fastq" on "${WD}/${READS1}.reference.fasta" ..."
+	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS1}.${READS2}.frc.${C}.snp.fastq > ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam 
 fi
 
 # 11. Generates VCF (eBWTclust calls) using sam2vcf -> reads1.reads2.frc.<m>.snp.sam.vcf
 
-if [ ! -f ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam.vcf ]; then
-	echo "Generating eBWTclust's VCF in "${WD}/${READS1}.${READS2}.frc.${M}.snp.vcf" ..."
-	sam2vcf -s ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam
+if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf ]; then
+	echo "Generating eBWTclust's VCF in "${WD}/${READS1}.${READS2}.frc.${C}.snp.vcf" ..."
+	sam2vcf -s ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam
 fi
 
 # 12. Generates VCF (bcftools calls) using BWA MEM + bcftools -> reads1.reads2.bcftools.vcf
@@ -218,8 +221,8 @@ fi
 
 # 13. Generate report containing running times of eBWTclust pipeline, BWA+bcftools pipeline, and precision/recall of eBWTclust pipeline (using BWA+bcftools pipeline as ground truth)
 
-if [ ! -f ${WD}/${READS1}.${READS2}.report.${M}.tsv ]; then
-	compareVCF -1 ${WD}/${READS1}.${READS2}.frc.${M}.snp.sam.vcf -2 ${WD}/${READS1}.${READS2}.bcftools.vcf > ${REPORT_OUT}
+if [ ! -f ${WD}/${READS1}.${READS2}.report.${C}.tsv ]; then
+	compareVCF -1 ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf -2 ${WD}/${READS1}.${READS2}.bcftools.vcf > ${REPORT_OUT}
 fi
 
 
