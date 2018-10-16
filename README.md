@@ -10,7 +10,7 @@ The *eBWTclust* suite can be used to discover SNPs/indels between two sets of re
 - **sam2vcf** converts the ".sam" file produced by aligning the above ".fastq" into a ".vcf" file containing the variations. 
 - **compareVCF** compares the above ".vcf" file against a ground truth ".vcf" file, and computes sensitivity/specificity of the eBWTclust procedure. 
 
-Note: *eBWTclust* and *clust2snp* require the Enhanced Generalized Suffix Array (EGSA) of the sets of reads (https://github.com/felipelouza/egsa) to be built beforehand. 
+Note: *eBWTclust* and *clust2snp* require the Enhanced Generalized Suffix Array (EGSA) of the sets of reads (https://github.com/felipelouza/egsa or https://github.com/giovannarosone/BCR_LCP_GSA) to be built beforehand. 
 
 The suite finds its main use in applications where no reference genome is known (alignment-free, reference-free variation discovery). For this, use the following pipeline:
 
@@ -36,9 +36,10 @@ A pre-print version can be found here: https://arxiv.org/abs/1805.01876.
 ### Install
 
 ~~~~
-#download eBWTclust and EGSA
+#download eBWTclust, EGSA, and BCR
 git clone https://github.com/nicolaprezza/eBWTclust
 git clone https://github.com/felipelouza/egsa
+git clone https://github.com/giovannarosone/BCR\_LCP\_GSA
 
 #build eBWTclust
 cd eBWTclust

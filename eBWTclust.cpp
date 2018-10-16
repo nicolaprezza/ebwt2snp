@@ -45,9 +45,9 @@ void help(){
 
 	"\nTo run eBWTclust, you must  first build the Enhanced Generalized  Suffix Array of the input" << endl <<
 	"sequences. The EGSA must be stored in the input file's folder adding extension .gesa to the" << endl <<
-	"name of the input file (github.com/felipelouza/egsa),or in three files with extensions .out" << endl <<
-	".out.lcp, .out.pairSA computed using the BCR algorithm. Output  is stored in " << endl <<
-	"reads.fasta.clusters." << endl;
+	"name of the input file (github.com/felipelouza/egsa),or in three files with extensions" << endl <<
+	".out, .out.lcp, .out.pairSA computed using the BCR algorithm " << endl <<
+	"(https://github.com/giovannarosone/BCR_LCP_GSA). Output is stored in reads.fasta.clusters." << endl;
 	 exit(0);
 }
 

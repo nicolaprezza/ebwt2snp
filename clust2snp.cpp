@@ -88,7 +88,7 @@ void help(){
 
 
 	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input sequences" << endl <<
-	"and the  cluster file built with  cluster-bwt. Output is stored in reads.snp (this  is actually a fasta" << endl <<
+	"and the  cluster file built with eBWTclust. Output is stored in reads.snp (this  is actually a fasta" << endl <<
 	"file), where reads.fasta is the input fasta file." << endl << endl <<
 
 	"Output:  SNPs are output in KisSNP2 format as a fasta file. IMPORTANT: in many cases, each SNP/indel is" << endl <<
