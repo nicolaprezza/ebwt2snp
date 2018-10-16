@@ -43,9 +43,10 @@ void help(){
 	"-y <arg>   Byte size of DA integers (read number) in input EGSA/BCR file (default: " << da_def <<  ")." << endl <<
 	"-z <arg>   Byte size of pos integers (position in read) in input EGSA/BCR file (default: " << pos_def <<  ")." << endl << endl <<
 
-	"\nTo run eBWTclust, you must first build the Enhanced Generalized Suffix Array of the input" << endl <<
-	"sequences. The EGSA must be stored in the input file's folder adding extension .gesa to " << endl <<
-	"the name of the input file  (github.com/felipelouza/egsa). Output  is stored in " << endl <<
+	"\nTo run eBWTclust, you must  first build the Enhanced Generalized  Suffix Array of the input" << endl <<
+	"sequences. The EGSA must be stored in the input file's folder adding extension .gesa to the" << endl <<
+	"name of the input file (github.com/felipelouza/egsa),or in three files with extensions .out" << endl <<
+	".out.lcp, .out.pairSA computed using the BCR algorithm. Output  is stored in " << endl <<
 	"reads.fasta.clusters." << endl;
 	 exit(0);
 }

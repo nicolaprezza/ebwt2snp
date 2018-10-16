@@ -87,10 +87,9 @@ void help(){
 	"-z <arg>    Byte size of pos integers (position in read) in input EGSA/BCR file (default: " << pos_def <<  ")." << endl << endl <<
 
 
-	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input sequences," << endl <<
-	"stored in a file with extension .gesa and with the same name of the input file" << endl <<
-	"(github.com/felipelouza/egsa), and (2) the cluster file built with cluster-bwt. Output is stored in" << endl <<
-	"reads.snp (this is actually a fasta file), where reads.fasta is the input fasta file." << endl << endl <<
+	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input sequences" << endl <<
+	"and the  cluster file built with  cluster-bwt. Output is stored in reads.snp (this  is actually a fasta" << endl <<
+	"file), where reads.fasta is the input fasta file." << endl << endl <<
 
 	"Output:  SNPs are output in KisSNP2 format as a fasta file. IMPORTANT: in many cases, each SNP/indel is" << endl <<
 	"reported twice: one time on the forward strand and one on the reverse strand. " << endl;
