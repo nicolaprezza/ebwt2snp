@@ -1,24 +1,25 @@
-# Usage: pipeline.sh reads1.fastq reads2.fastq reference.fasta c
+# Usage: pipeline.sh <reads1.fastq> <reads2.fastq> <reference.fasta> <c>
 #
 # behaviour (the steps are skipped if the file they will produce already exists)
 # 1.  Converts input reads to fasta -> reads1.fasta reads2.fasta 
 # 2.  Adds the reverse complements to the reads and concatenates the two read files -> reads1.reads2.frc.fasta
 # 3.  Builds EGSA -> reads1.reads2.frc.fasta.gesa
 # 4.  Run eBWTclust -> reads1.reads2.frc.fasta.clusters 
-# 5.  Run clust2snp with parameter m -> reads1.reads2.frc.<m>.snp
-# 6.  Run snp2fastq -> reads1.reads2.frc.<m>.snp.fastq
+# 5.  Run clust2snp with parameter -c <c> -> reads1.reads2.frc.<c>.snp
+# 6.  Run snp2fastq -> reads1.reads2.frc.<c>.snp.fastq
 # 7.  Builds BWA MEM index of reference.fasta -> reference.fasta.{amb,ann,bwt,fai,pac,sa} files
 # 8.  Create reference of reads1.fasta using BWA MEM + bcftools + vcfconsensus -> reads1.reference.fasta
 # 9.  Builds BWA MEM index of reads1.reference.fasta -> reads1.reference.fasta.{amb,ann,bwt,fai,pac,sa} files
-# 10.  Aligns reads1.reads2.frc.<m>.snp.fastq on reads1.reference.fasta -> reads1.reads2.frc.<m>.snp.sam
-# 11. Generates VCF (eBWTclust calls) using sam2vcf -> reads1.reads2.frc.<m>.snp.sam.vcf
+# 10.  Aligns reads1.reads2.frc.<c>.snp.fastq on reads1.reference.fasta -> reads1.reads2.frc.<c>.snp.sam
+# 11. Generates VCF (eBWTclust calls) using sam2vcf -> reads1.reads2.frc.<c>.snp.sam.vcf
 # 12. Generates VCF (bcftools calls) using BWA MEM + bcftools -> reads1.reads2.bcftools.vcf
 # 13. Generate report containing running times of eBWTclust pipeline, BWA+bcftools pipeline, and precision/recall of eBWTclust pipeline (using BWA+bcftools pipeline as ground truth)
 
-# Requires the following executables to be globally visible: 
+# Requires the following executables to be globally visible (in addition to the executables of eBWTclust): 
 # - fastq2fasta.sh (https://github.com/nicolaprezza/bioinfo-tools)
 # - seqtk
 # - egsa (https://github.com/felipelouza/egsa)
+# - gsufsort (https://github.com/felipelouza/gsufsort)
 # - bwa
 # - samtools
 # - bcftools
@@ -58,11 +59,11 @@ M=5
 
 TIME_EGSA=${WD}/egsa.time
 TIME_EBWTCLUST=${WD}/eBWTclust.time
-TIME_CLUST2SNP=${WD}/clust2snp_${M}.time
+TIME_CLUST2SNP=${WD}/clust2snp_${C}.time
 TIME_BWAMEM=${WD}/bwamem.time
 TIME_BWAIDX=${WD}/bwaindex.time
 TIME_BCFTOOLS=${WD}/bcftools.time
-REPORT_OUT=${WD}/report_${M}
+REPORT_OUT=${WD}/report_${C}
 
 samtool_version=`samtools 2>&1 >/dev/null | grep Version | cut -d' ' -f 2 | cut -d. -f 1`
 
@@ -122,7 +123,7 @@ if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp ]; then
 	mv ${WD}/${READS1}.${READS2}.frc.snp ${WD}/${READS1}.${READS2}.frc.${C}.snp
 fi
 
-# 6.  Run snp2fastq -> reads1.reads2.frc.<m>.snp.fastq
+# 6.  Run snp2fastq -> reads1.reads2.frc.<c>.snp.fastq
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.fastq ]; then
 	echo "converting .snp to .fastq ..."
@@ -176,14 +177,14 @@ if [ ! -f ${WD}/${READS1}.reference.fasta.amb ]; then
 	/usr/bin/time -v bwa index ${WD}/${READS1}.reference.fasta > ${TIME_BWAIDX} 2>&1
 fi
 
-# 10.  Aligns reads1.reads2.frc.<m>.snp.fastq on reads1.reference.fasta -> reads1.reads2.frc.<m>.snp.sam
+# 10.  Aligns reads1.reads2.frc.<c>.snp.fastq on reads1.reference.fasta -> reads1.reads2.frc.<c>.snp.sam
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam ]; then
 	echo "Aligning "${WD}/${READS1}.${READS2}.frc.${C}.snp.fastq" on "${WD}/${READS1}.reference.fasta" ..."
 	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS1}.${READS2}.frc.${C}.snp.fastq > ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam 
 fi
 
-# 11. Generates VCF (eBWTclust calls) using sam2vcf -> reads1.reads2.frc.<m>.snp.sam.vcf
+# 11. Generates VCF (eBWTclust calls) using sam2vcf -> reads1.reads2.frc.<c>.snp.sam.vcf
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf ]; then
 	echo "Generating eBWTclust's VCF in "${WD}/${READS1}.${READS2}.frc.${C}.snp.vcf" ..."
@@ -219,7 +220,7 @@ else
 fi
 
 
-# 13. Generate report containing running times of eBWTclust pipeline, BWA+bcftools pipeline, and precision/recall of eBWTclust pipeline (using BWA+bcftools pipeline as ground truth)
+# 13. Generate report containing precision/recall of eBWTclust pipeline (using BWA+bcftools pipeline as ground truth)
 
 if [ ! -f ${WD}/${READS1}.${READS2}.report.${C}.tsv ]; then
 	compareVCF -1 ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf -2 ${WD}/${READS1}.${READS2}.bcftools.vcf > ${REPORT_OUT}
