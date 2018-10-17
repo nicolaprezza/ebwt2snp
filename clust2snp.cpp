@@ -347,8 +347,8 @@ string consensus_(vector<string> & S){
 /*
  * input: vector of strings with the same length
  *
- * output: more advanced consensus. First, compute the consensus C with function consensus_. Then, extract only strings within distance max_err
- * from C, and compute a new consensus (using again consensus_).
+ * output: more advanced consensus. First, compute the consensus C with function consensus_. Then, count how many (x) strings lie within distance max_err
+ * from C, and return <C,x>.
  *
  * return: consensus and a value indicating the number of strings from the original set S "supporting" the returned consensus.
  *
@@ -357,14 +357,14 @@ pair<string, int> consensus(vector<string> & S){
 
 	string C = consensus_(S);
 
-	vector<string> S1;
+	int support = 0;
 
 	//compute how many strings in S have small Hamming distance from the computed consensus (i.e. they "support" the consensus)
 	for(auto s:S)
 		if(dH(C,s) <= max_err)
-			S1.push_back(s);
+			support++;
 
-	return {consensus_(S1), S1.size()};
+	return {C, support};
 
 }
 
@@ -522,7 +522,7 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 	//get the reads as strings
 	get_reads(fasta_path, read_ranks, reads);
 
-	cout << "(3/4) Building candidate read pairs ... " << endl;
+	cout << "(3/4) Filtering " << candidate_variants.size() <<  " candidates and computing consensus of left-contexts ... " << endl;
 
 	uint64_t idx=0;
 	int perc = 0, last_perc=0;
@@ -574,7 +574,7 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 		++idx;
 
 		perc = (idx*100)/candidate_variants.size();
-		if(perc >= last_perc+10){
+		if(perc >= last_perc+1){
 
 			last_perc=perc;
 			cout << " " << perc << "% done." << endl;

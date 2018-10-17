@@ -13,6 +13,7 @@
 
 using namespace std;
 
+//TODO add option c to filter out variants testified by less than c reads
 
 void help(){
 

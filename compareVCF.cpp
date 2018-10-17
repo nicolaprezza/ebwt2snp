@@ -23,7 +23,7 @@ bool non_isolated = true;
 void help(){
 
 	cout << "compareVCF [OPTIONS]" << endl << endl <<
-	"Converts the aligned calls (with bwa-mem) 'calls.sam' of clust2snp into a vcf file 'calls.sam.vcf'." << endl <<
+	"Compute sensitivity and specificity of the calls specified with -1 against those specified with -2." << endl <<
 	"Options:" << endl <<
 		"-h          Print this help." << endl <<
 		"-1 <arg>    Input VCF file to be validated. REQUIRED" << endl <<
