@@ -30,8 +30,8 @@ void help(){
 		"-h          Print this help." << endl <<
 		"-x          Disable non-isolated SNPs (default: enabled)." << endl <<
 		"-s <arg>    Input SAM file. REQUIRED" << endl <<
-		"-d <arg>    Keep only one indel in pairs within <arg> bases. Default: " <<  indel_deduplicate_def << ")" << endl <<
-		"-e		     Keep only exact alignments." << endl;
+		"-d <arg>    Keep only one indel in pairs within <arg> bases. Default: " <<  indel_deduplicate_def << "." << endl <<
+		"-e          Keep only exact alignments." << endl;
 	exit(0);
 }
 
@@ -44,6 +44,11 @@ struct vcf_entry{
 	string ALT;
 
 	bool indel;
+
+	bool exact;
+
+	uint64_t cov_ref;
+	uint64_t cov_alt;
 
 	bool operator<(const vcf_entry & a) const{
 
@@ -140,14 +145,17 @@ int main(int argc, char** argv){
 			string REF_dna;//reference dna
 			string ALT_dna;//alternative dna
 			uint64_t pos;//alignment position
-			uint64_t COV1;//reads supporting variation on individual 1
-			uint64_t COV2;//reads supporting variation on individual 2
+			uint64_t COV_REF;//reads supporting variation on individual 1
+			uint64_t COV_ALT;//reads supporting variation on individual 2
 			uint64_t snp_pos;
 			string chr;
 			string cigar;
 			string mismatches;
 
 			string token;
+
+			//First individual = reference = read DNA
+			//Second individual = ALT = DNA in header
 
 			{
 
@@ -176,9 +184,9 @@ int main(int argc, char** argv){
 			}
 
 			getline(iss1, token, '_');
-			COV1 = atoi(token.c_str());
+			COV_REF = atoi(token.c_str());
 			getline(iss1, token, '_');
-			COV2 = atoi(token.c_str());
+			COV_ALT = atoi(token.c_str());
 
 			getline(iss1, ALT_dna, '_');
 
@@ -263,7 +271,9 @@ int main(int argc, char** argv){
 										pos + snp_pos,
 										REF_dna.substr(snp_pos,REF.length()+1),
 										ALT_dna.substr(snp_pos,1),
-										indel
+										indel,
+										COV_REF,
+										COV_ALT
 						};
 
 					}else{
@@ -273,7 +283,9 @@ int main(int argc, char** argv){
 										pos + snp_pos,
 										REF_dna.substr(snp_pos,1),
 										ALT_dna.substr(snp_pos,ALT.length()+1),
-										indel
+										indel,
+										COV_REF,
+										COV_ALT
 						};
 
 					}
@@ -286,7 +298,10 @@ int main(int argc, char** argv){
 									pos + snp_pos,
 									REF_dna.substr(snp_pos,1),
 									ALT_dna.substr(snp_pos,1),
-									indel
+									indel,
+									exact,
+									COV_REF,
+									COV_ALT
 					};
 
 				}
@@ -325,7 +340,10 @@ int main(int argc, char** argv){
 															pos + i,
 															REF_dna.substr(snp_pos_ref+i,1),
 															ALT_dna.substr(snp_pos_alt+i,1),
-															false
+															false,
+															exact,
+															COV_REF,
+															COV_ALT
 											};
 
 										VCF.push_back(v);
@@ -347,7 +365,10 @@ int main(int argc, char** argv){
 															pos + i,
 															REF_dna.substr(i,1),
 															ALT_dna.substr(i,1),
-															false
+															false,
+															exact,
+															COV_REF,
+															COV_ALT
 											};
 
 										VCF.push_back(v);
@@ -373,7 +394,10 @@ int main(int argc, char** argv){
 															pos + i,
 															REF_dna.substr(i,1),
 															ALT_dna.substr(i,1),
-															false
+															false,
+															exact,
+															COV_REF,
+															COV_ALT
 											};
 
 										VCF.push_back(v);
@@ -395,7 +419,10 @@ int main(int argc, char** argv){
 															pos + i,
 															REF_dna.substr(i,1),
 															ALT_dna.substr(i,1),
-															false
+															false,
+															exact,
+															COV_REF,
+															COV_ALT
 											};
 
 										VCF.push_back(v);
@@ -473,7 +500,14 @@ int main(int argc, char** argv){
 	for(auto v:VCF_filt){
 
 		//cout << v.chr << "\t" << v.pos << "\t" << ".\t" << v.REF << "\t" << v.ALT << "\t" << (indel?"INDEL":"SNP") << endl;
-		of << v.chr << "\t" << v.pos << "\t" << ".\t" << v.REF << "\t" << v.ALT << "\t" << (v.indel?"INDEL":"SNP") << endl;
+		of	<< v.chr << "\t"
+			<< v.pos << "\t" << ".\t"
+			<< v.REF << "\t"
+			<< v.ALT << "\t"
+			<< (v.indel?"INDEL":"SNP") << "\t"
+			<< v.exact << "\t"
+			<< v.cov_ref << "\t"
+			<< v.cov_alt << endl;
 
 		n_indels += v.indel;
 		n_snps += (not v.indel);
