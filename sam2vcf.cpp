@@ -20,6 +20,8 @@ int indel_deduplicate = 0;
 
 bool non_isolated = true;
 
+bool only_exact = false;
+
 void help(){
 
 	cout << "sam2vcf [OPTIONS]" << endl << endl <<
@@ -28,7 +30,8 @@ void help(){
 		"-h          Print this help." << endl <<
 		"-x          Disable non-isolated SNPs (default: enabled)." << endl <<
 		"-s <arg>    Input SAM file. REQUIRED" << endl <<
-		"-d <arg>    Keep only one indel in pairs within <arg> bases. Default: " <<  indel_deduplicate_def << ")" << endl;
+		"-d <arg>    Keep only one indel in pairs within <arg> bases. Default: " <<  indel_deduplicate_def << ")" << endl <<
+		"-e		     Keep only exact alignments." << endl;
 	exit(0);
 }
 
@@ -82,13 +85,16 @@ int main(int argc, char** argv){
 	string infile;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "xhd:s:")) != -1){
+	while ((opt = getopt(argc, argv, "xhd:s:e")) != -1){
 		switch (opt){
 			case 'h':
 				help();
 			break;
 			case 'x':
 				non_isolated = false;
+			break;
+			case 'e':
+				only_exact = true;
 			break;
 			case 'd':
 				indel_deduplicate = atoi(optarg);
@@ -114,7 +120,7 @@ int main(int argc, char** argv){
 
 	string str;
 
-	of << "#CHROM\tPOS\tID\tREF\tALT\tINFO" << endl;
+	of << "#CHROM\tPOS\tID\tREF\tALT\tTYPE\tEXACT\tCOV1\tCOV2" << endl;
 	//cout << "#CHROM\tPOS\tID\tREF\tALT\tINFO" << endl;
 
 	vector<vcf_entry> VCF;
@@ -123,34 +129,37 @@ int main(int argc, char** argv){
 
 		if(str[0]!='@'){//skip header
 
+			string name;//entry name
+			std::istringstream iss(str);
+			getline(iss, name, '\t');
+
+			string event_nr;//INDEL or SNP
 			string type;//INDEL or SNP
 			string REF;//reference allele
 			string ALT;//alternative allele
 			string REF_dna;//reference dna
 			string ALT_dna;//alternative dna
 			uint64_t pos;//alignment position
+			uint64_t COV1;//reads supporting variation on individual 1
+			uint64_t COV2;//reads supporting variation on individual 2
+			uint64_t snp_pos;
+			string chr;
+			string cigar;
+			string mismatches;
 
-			string str_copy = str;
+			string token;
 
-			char *p = strtok((char*)str_copy.c_str(), "_");
-			type = string(p);
+			{
 
-			str_copy = str;
-			p = strtok((char*)str_copy.c_str(), "|");
-			p = strtok(NULL, "|");
-			string tmp1 = string(p);//P_1:30_T/
+			std::istringstream iss1(name);
 
-			p = strtok(NULL, "|");
-			p = strtok(NULL, "|");
-			string tmp2 = string(p);//nb_pol_1_DNA
+			getline(iss1, type, '_');
+			getline(iss1, event_nr, '_');
+			getline(iss1, token, '_');
+			snp_pos = atoi(token.c_str());
 
-			p = strtok((char*)tmp1.c_str(), "_");
-			p = strtok(NULL, "_");//1:30
-
-			string tmp3 = string(p);
-
-			p = strtok(NULL, "_");
-			string REFALT = string(p);
+			string REFALT;
+			getline(iss1, REFALT, '_');
 
 			if(REFALT[0]=='/'){
 
@@ -159,40 +168,44 @@ int main(int argc, char** argv){
 
 			}else{
 
-				p = strtok((char*)REFALT.c_str(), "/");
-				REF = string(p);
-				p = strtok(NULL, "/");
-				if(p!=NULL)
-					ALT = string(p);
-				else
-					ALT = string();
+				std::istringstream iss2(REFALT);
+				getline(iss2, REF, '/');
+				ALT=string();
+				getline(iss2, ALT, '/');
 
 			}
 
+			getline(iss1, token, '_');
+			COV1 = atoi(token.c_str());
+			getline(iss1, token, '_');
+			COV2 = atoi(token.c_str());
 
-			p = strtok((char*)tmp2.c_str(), "_");
-			p = strtok(NULL, "_");
-			p = strtok(NULL, "_");
-			p = strtok(NULL, "_");
-			tmp2 = string(p);
+			getline(iss1, ALT_dna, '_');
 
-			p = strtok((char*)tmp3.c_str(), ":");
-			p = strtok(NULL, "_");
+			}
 
-			/*
-			 * snp_pos will contain the starting position of the snp/indel on REF on the forward strand.
-			 * Note: in case of indel, snp_pos contains the position before the beginning of the indel, since
-			 * we want to report at least 1 base in both REF/ALT in the VCF
-			 */
-			int snp_pos = atoi(p);
-
-			std::istringstream iss(tmp2);
-			std::string token;
-			getline(iss, token, '\t'); //ALT DNA
-			ALT_dna = token;
-
-			getline(iss, token, '\t'); //flag
+			getline(iss, token, '\t');//flag
 			unsigned int f = atoi(token.c_str());
+			getline(iss, chr, '\t');
+			getline(iss, token, '\t');
+			pos = atoi(token.c_str());
+			getline(iss, token, '\t');
+			getline(iss, cigar, '\t');
+
+			getline(iss, token, '\t');
+			getline(iss, token, '\t');
+			getline(iss, token, '\t');
+			getline(iss, REF_dna, '\t');
+
+			getline(iss, token, '\t');//quality
+
+			getline(iss, mismatches, '\t');//NM:i:x
+
+			//exact alignment: 0 mismatches and 0 skips/indels
+			bool exact = 	std::count(cigar.begin(), cigar.end(), 'S') == 0 and
+							std::count(cigar.begin(), cigar.end(), 'I') == 0 and
+							std::count(cigar.begin(), cigar.end(), 'D') == 0 and
+							mismatches.compare("NM:i:0")==0;
 
 			bool reversed = (f & (unsigned int)16) != 0;
 			bool indel = type.compare("INDEL")==0;
@@ -210,23 +223,6 @@ int main(int argc, char** argv){
 				}
 
 			}
-
-			getline(iss, token, '\t'); //chr
-
-			string chr = token;
-
-			getline(iss, token, '\t'); //pos
-
-			pos = atoi(token.c_str());
-
-			getline(iss, token, '\t');
-			getline(iss, token, '\t');
-			getline(iss, token, '\t');
-			getline(iss, token, '\t');
-			getline(iss, token, '\t');
-			getline(iss, token, '\t');//REF_dna
-
-			REF_dna = token;
 
 			//adjust snp_pos in the case we are on FW strand
 			if(not reversed){
@@ -295,42 +291,68 @@ int main(int argc, char** argv){
 
 				}
 
-				VCF.push_back(v);
+				if((not only_exact) or exact){
 
-				/*
-				 * find non-isolated SNPs
-				 */
+					VCF.push_back(v);
 
-				if(non_isolated){
+					/*
+					 * find non-isolated SNPs
+					 */
 
-					if(indel){
+					if(non_isolated){
 
-						if(reversed){
+						if(indel){
 
-							//non-isolated SNPs are on the right of the end position of indel
+							if(reversed){
 
-							int indel_length = REF.length() > 0 ? REF.length() : ALT.length();
+								//non-isolated SNPs are on the right of the end position of indel
 
-							int L = std::max(REF_dna.length(), ALT_dna.length());//length of fragment containing the insert
+								int indel_length = REF.length() > 0 ? REF.length() : ALT.length();
 
-							int len_right = L - (snp_pos+indel_length) -1; //length of right part in common (with potential SNPs)
+								int L = std::max(REF_dna.length(), ALT_dna.length());//length of fragment containing the insert
 
-							int snp_pos_ref = REF.length() > 0 ? snp_pos + indel_length +1 : snp_pos +1;
-							int snp_pos_alt = REF.length() > 0 ? snp_pos +1 : snp_pos + indel_length +1;
+								int len_right = L - (snp_pos+indel_length) -1; //length of right part in common (with potential SNPs)
 
-							for(int i=0;i<len_right;++i){
+								int snp_pos_ref = REF.length() > 0 ? snp_pos + indel_length +1 : snp_pos +1;
+								int snp_pos_alt = REF.length() > 0 ? snp_pos +1 : snp_pos + indel_length +1;
 
-								if(REF_dna[snp_pos_ref+i] != ALT_dna[snp_pos_alt+i]){
+								for(int i=0;i<len_right;++i){
 
-									vcf_entry v  = {
-														chr,
-														pos + i,
-														REF_dna.substr(snp_pos_ref+i,1),
-														ALT_dna.substr(snp_pos_alt+i,1),
-														false
-										};
+									if(REF_dna[snp_pos_ref+i] != ALT_dna[snp_pos_alt+i]){
 
-									VCF.push_back(v);
+										vcf_entry v  = {
+															chr,
+															pos + i,
+															REF_dna.substr(snp_pos_ref+i,1),
+															ALT_dna.substr(snp_pos_alt+i,1),
+															false
+											};
+
+										VCF.push_back(v);
+
+									}
+
+								}
+
+							}else{
+
+								//non-isolated SNPs are on the left of the start position of indel
+
+								for(int i=0;i<snp_pos;++i){
+
+									if(REF_dna[i] != ALT_dna[i]){
+
+										vcf_entry v  = {
+															chr,
+															pos + i,
+															REF_dna.substr(i,1),
+															ALT_dna.substr(i,1),
+															false
+											};
+
+										VCF.push_back(v);
+
+									}
 
 								}
 
@@ -338,69 +360,47 @@ int main(int argc, char** argv){
 
 						}else{
 
-							//non-isolated SNPs are on the left of the start position of indel
+							if(reversed){
 
-							for(int i=0;i<snp_pos;++i){
+								//non-isolated SNPs are on the right
 
-								if(REF_dna[i] != ALT_dna[i]){
+								for(int i=snp_pos+1;i<REF_dna.length();++i){
 
-									vcf_entry v  = {
-														chr,
-														pos + i,
-														REF_dna.substr(i,1),
-														ALT_dna.substr(i,1),
-														false
-										};
+									if(REF_dna[i] != ALT_dna[i]){
 
-									VCF.push_back(v);
+										vcf_entry v  = {
+															chr,
+															pos + i,
+															REF_dna.substr(i,1),
+															ALT_dna.substr(i,1),
+															false
+											};
 
-								}
+										VCF.push_back(v);
 
-							}
-
-						}
-
-					}else{
-
-						if(reversed){
-
-							//non-isolated SNPs are on the right
-
-							for(int i=snp_pos+1;i<REF_dna.length();++i){
-
-								if(REF_dna[i] != ALT_dna[i]){
-
-									vcf_entry v  = {
-														chr,
-														pos + i,
-														REF_dna.substr(i,1),
-														ALT_dna.substr(i,1),
-														false
-										};
-
-									VCF.push_back(v);
+									}
 
 								}
 
-							}
+							}else{
 
-						}else{
+								//non-isolated SNPs are on the left
 
-							//non-isolated SNPs are on the left
+								for(int i=0;i<snp_pos;++i){
 
-							for(int i=0;i<snp_pos;++i){
+									if(REF_dna[i] != ALT_dna[i]){
 
-								if(REF_dna[i] != ALT_dna[i]){
+										vcf_entry v  = {
+															chr,
+															pos + i,
+															REF_dna.substr(i,1),
+															ALT_dna.substr(i,1),
+															false
+											};
 
-									vcf_entry v  = {
-														chr,
-														pos + i,
-														REF_dna.substr(i,1),
-														ALT_dna.substr(i,1),
-														false
-										};
+										VCF.push_back(v);
 
-									VCF.push_back(v);
+									}
 
 								}
 

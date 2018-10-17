@@ -13,8 +13,6 @@
 
 using namespace std;
 
-//TODO add option c to filter out variants testified by less than c reads
-
 void help(){
 
 	cout << "snp2fastq calls.snp" << endl << endl <<
@@ -42,12 +40,47 @@ int main(int argc, char** argv){
 	string header;
 	string dna;
 
+	string event_type;
+	string event_number;
+	string bases_left;
+	string cov0;
+	string cov1;
+	string event;
+
 	while(getline(is, str)){
 
 		if(idx%4==0){//first line of call
 
-			header = str.substr(1);//remove '>'
-			header.append("_");
+			std::istringstream iss_bar(str);
+			std::string token;
+			getline(iss_bar, token, '|');
+			token = token.substr(1);
+
+			{
+				std::istringstream iss_underscore(token);
+				getline(iss_underscore, event_type, '_');
+				getline(iss_underscore, token, '_');
+				getline(iss_underscore, token, '_');
+				getline(iss_underscore, event_number, '_');
+			}
+
+			getline(iss_bar, token, '|');
+
+			{
+				std::istringstream iss_dots(token);
+				getline(iss_dots, token, ':');
+				getline(iss_dots, token, ':');
+				std::istringstream iss_underscore(token);
+				getline(iss_underscore, bases_left, '_');
+				getline(iss_underscore, event, '_');
+
+			}
+
+			getline(iss_bar, cov0, '|');
+
+			header = event_type;
+			header += "_" + event_number + "_" + bases_left + "_" + event + "_" + cov0;
+
 
 		}
 
@@ -57,11 +90,20 @@ int main(int argc, char** argv){
 
 		}
 
-		//if(idx%4==2) ignore: header of second individual
+		if(idx%4==2){//header second individual
+
+			std::istringstream iss_bar(str);
+			getline(iss_bar, cov1, '|');
+			getline(iss_bar, cov1, '|');
+			getline(iss_bar, cov1, '|');
+
+			header += "_" + cov1 + "_";
+
+		}
 
 		if(idx%4==3){//DNA of second individual
 
-			header.append(str);
+			header += str;
 
 			//now output fastq entry
 			of 	<< "@" << header << endl <<
