@@ -125,7 +125,7 @@ int main(int argc, char** argv){
 
 	string str;
 
-	of << "#CHROM\tPOS\tID\tREF\tALT\tTYPE\tEXACT\tCOV1\tCOV2" << endl;
+	of << "#CHROM\tPOS\tID\tREF\tALT\tTYPE\tEXACT\tCOV_REF\tCOV_ALT" << endl;
 	//cout << "#CHROM\tPOS\tID\tREF\tALT\tINFO" << endl;
 
 	vector<vcf_entry> VCF;
@@ -272,6 +272,7 @@ int main(int argc, char** argv){
 										REF_dna.substr(snp_pos,REF.length()+1),
 										ALT_dna.substr(snp_pos,1),
 										indel,
+										exact,
 										COV_REF,
 										COV_ALT
 						};
@@ -284,6 +285,7 @@ int main(int argc, char** argv){
 										REF_dna.substr(snp_pos,1),
 										ALT_dna.substr(snp_pos,ALT.length()+1),
 										indel,
+										exact,
 										COV_REF,
 										COV_ALT
 						};
