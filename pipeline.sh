@@ -10,13 +10,14 @@
 # 7.  Builds BWA MEM index of reference.fasta -> reference.fasta.{amb,ann,bwt,fai,pac,sa} files
 # 8.  Create reference of reads1.fasta using BWA MEM + bcftools + vcfconsensus -> reads1.reference.fasta
 # 9.  Builds BWA MEM index of reads1.reference.fasta -> reads1.reference.fasta.{amb,ann,bwt,fai,pac,sa} files
-# 10.  Aligns reads1.reads2.frc.<c>.snp.fastq on reads1.reference.fasta -> reads1.reads2.frc.<c>.snp.sam
+# 10. Aligns reads1.reads2.frc.<c>.snp.fastq on reads1.reference.fasta -> reads1.reads2.frc.<c>.snp.sam
 # 11. Generates VCF (eBWTclust calls) using sam2vcf -> reads1.reads2.frc.<c>.snp.sam.vcf
 # 12. Generates VCF (bcftools calls) using BWA MEM + bcftools -> reads1.reads2.bcftools.vcf
 # 13. Generate report containing running times of eBWTclust pipeline, BWA+bcftools pipeline, and precision/recall of eBWTclust pipeline (using BWA+bcftools pipeline as ground truth)
 
 # Requires the following executables to be globally visible (in addition to the executables of eBWTclust): 
 # - fastq2fasta.sh (https://github.com/nicolaprezza/bioinfo-tools)
+# - vcf2fasta.sh (https://github.com/nicolaprezza/bioinfo-tools)
 # - seqtk
 # - egsa (https://github.com/felipelouza/egsa)
 # - gsufsort (https://github.com/felipelouza/gsufsort)

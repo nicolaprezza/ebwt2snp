@@ -50,6 +50,13 @@ struct vcf_entry{
 	uint64_t cov_ref;
 	uint64_t cov_alt;
 
+	void print(){
+
+		cout << endl;
+		cout << chr << " " << pos << " " << REF << " " << ALT << " " << indel << " " << exact << " " << cov_ref << " " << cov_alt << endl;
+
+	}
+
 	bool operator<(const vcf_entry & a) const{
 
 		if(chr.compare(a.chr) < 0 ) return true;
@@ -209,7 +216,7 @@ int main(int argc, char** argv){
 			bool reversed = (f & (unsigned int)16) != 0;
 			bool indel = type.compare("INDEL")==0;
 
-			if(reversed){//then REF_DNA has been reverse-complemented by the aligner. RC also ALT_DNA and the variant
+			if(reversed){//then REF_DNA has been reverse-complemented by the aligner. apply reverse-complement also ALT_DNA and the variant
 
 				ALT_dna = RC(ALT_dna);
 				REF = RC(REF);
@@ -222,6 +229,7 @@ int main(int argc, char** argv){
 				}
 
 			}
+
 
 			/*cout << "event_nr " << event_nr << endl;
 			cout << "type " << type<< endl;//INDEL or SNP
@@ -303,6 +311,8 @@ int main(int argc, char** argv){
 
 
 				}else{
+
+					//cout << "SNP:\n" << REF_dna << endl << ALT_dna << endl << REF_dna.substr(snp_pos,1) << " " << ALT_dna.substr(snp_pos,1)  << endl;
 
 					v = {
 									chr,
@@ -400,6 +410,8 @@ int main(int argc, char** argv){
 
 									if(REF_dna[i] != ALT_dna[i]){
 
+										//cout << "SNP (non IS):\n" << REF_dna << endl << ALT_dna << endl << REF_dna.substr(i,1) << " " << ALT_dna.substr(i,1)  << endl;
+
 										vcf_entry v  = {
 															chr,
 															pos + i,
@@ -424,6 +436,8 @@ int main(int argc, char** argv){
 								for(int i=0;i<snp_pos;++i){
 
 									if(REF_dna[i] != ALT_dna[i]){
+
+										//cout << "SNP (non IS):\n" << REF_dna << endl << ALT_dna << endl << REF_dna.substr(i,1) << " " << ALT_dna.substr(i,1)  << endl;
 
 										vcf_entry v  = {
 															chr,
@@ -485,8 +499,7 @@ int main(int argc, char** argv){
 		if(		VCF[i].indel and
 				VCF[i+1].indel and
 				VCF[i].chr.compare(VCF[i+1].chr)==0 and
-				std::abs( int(VCF[i].pos)-int(VCF[i+1].pos) ) <= indel_deduplicate  ){
-
+				std::abs( int(VCF[i].pos)-int(VCF[i+1].pos) ) <= indel_deduplicate ){
 
 			VCF_filt.push_back(VCF[i]);//keep first indel
 			i++;//skip second indel
