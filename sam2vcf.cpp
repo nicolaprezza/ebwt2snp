@@ -223,10 +223,7 @@ int main(int argc, char** argv){
 
 			}
 
-
-
-
-			cout << "event_nr " << event_nr << endl;
+			/*cout << "event_nr " << event_nr << endl;
 			cout << "type " << type<< endl;//INDEL or SNP
 			cout <<  "REF " <<  REF<< endl;//reference allele
 			cout <<  "ALT " <<  ALT<< endl;//alternative allele
@@ -239,10 +236,7 @@ int main(int argc, char** argv){
 			cout <<  "chr " <<  chr<< endl;
 			cout <<  "cigar " <<  cigar<< endl;
 			cout <<  "mismatches " <<  mismatches<< endl<< endl;
-
-
-
-
+			cout <<  "flag " <<  f<< endl<< endl;*/
 
 			//adjust snp_pos in the case we are on FW strand
 			if(not reversed){

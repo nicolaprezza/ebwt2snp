@@ -143,7 +143,7 @@ fi
 if [ "$samtool_version" -eq "1" ]; then
 	if [ ! -f ${WD}/${READS1}.reference.fasta ]; then
 		echo "Computing reference of "${READS1}". Storing it to file "${WD}/${READS1}.reference.fasta" ..."
-		bwa mem ${WD}/${REF} ${WD}/${READS1}.fastq > ${WD}/alignment.tmp.sam
+		bwa mem ${WD}/${REF} ${WD}/${READS1}.fastq -o ${WD}/alignment.tmp.sam
 		samtools view -b -S ${WD}/alignment.tmp.sam > ${WD}/alignment.tmp.bam
 		samtools sort ${WD}/alignment.tmp.bam > ${WD}/alignment.tmp.sorted.bam
 		samtools index ${WD}/alignment.tmp.sorted.bam
@@ -155,7 +155,7 @@ if [ "$samtool_version" -eq "1" ]; then
 else
 	if [ ! -f ${WD}/${READS1}.reference.fasta ]; then
 		echo "Computing reference of "${READS1}". Storing it to file "${WD}/${READS1}.reference.fasta" ..."
-		bwa mem ${WD}/${REF} ${WD}/${READS1}.fastq > ${WD}/alignment.tmp.sam
+		bwa mem ${WD}/${REF} ${WD}/${READS1}.fastq -o ${WD}/alignment.tmp.sam
 		samtools view -b -S ${WD}/alignment.tmp.sam > ${WD}/alignment.tmp.bam
 		samtools sort ${WD}/alignment.tmp.bam ${WD}/alignment.tmp.sorted
 		samtools index ${WD}/alignment.tmp.sorted.bam
@@ -181,7 +181,7 @@ fi
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam ]; then
 	echo "Aligning "${WD}/${READS1}.${READS2}.frc.${C}.snp.fastq" on "${WD}/${READS1}.reference.fasta" ..."
-	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS1}.${READS2}.frc.${C}.snp.fastq > ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam 
+	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS1}.${READS2}.frc.${C}.snp.fastq -o ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam 
 fi
 
 # 11. Generates VCF (eBWTclust calls) using sam2vcf -> reads1.reads2.frc.<c>.snp.sam.vcf
@@ -196,7 +196,7 @@ fi
 if [ "$samtool_version" -eq "1" ]; then
 	if [ ! -f ${WD}/${READS1}.${READS2}.bcftools.vcf ]; then
 		echo "Calling SNPs using BWA + bcftools. Storing SNPs to file "${WD}/${READS1}.${READS2}.bcftools.vcf" ..."
-		/usr/bin/time -v bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS2}.fastq > ${WD}/alignment.tmp.sam 2> ${TIME_BWAMEM}
+		/usr/bin/time -v bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS2}.fastq -o ${WD}/alignment.tmp.sam 2> ${TIME_BWAMEM}
 		/usr/bin/time -v samtools view -b -S ${WD}/alignment.tmp.sam > ${WD}/alignment.tmp.bam 2>> ${TIME_BCFTOOLS}
 		/usr/bin/time -v samtools sort ${WD}/alignment.tmp.bam > ${WD}/alignment.tmp.sorted.bam 2>> ${TIME_BCFTOOLS}
 		/usr/bin/time -v samtools index ${WD}/alignment.tmp.sorted.bam 2>> ${TIME_BCFTOOLS}
@@ -206,7 +206,7 @@ if [ "$samtool_version" -eq "1" ]; then
 else
 	if [ ! -f ${WD}/${READS1}.${READS2}.bcftools.vcf ]; then
 		echo "Calling SNPs using BWA + bcftools. Storing SNPs to file "${WD}/${READS1}.${READS2}.bcftools.vcf" ..."
-		/usr/bin/time -v bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS2}.fastq > ${WD}/alignment.tmp.sam 2> ${TIME_BWAMEM}
+		/usr/bin/time -v bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS2}.fastq -o ${WD}/alignment.tmp.sam 2> ${TIME_BWAMEM}
 		/usr/bin/time -v samtools view -b -S ${WD}/alignment.tmp.sam > ${WD}/alignment.tmp.bam 2>> ${TIME_BCFTOOLS}
 		/usr/bin/time -v samtools sort ${WD}/alignment.tmp.bam ${WD}/alignment.tmp.sorted 2>> ${TIME_BCFTOOLS}
 		/usr/bin/time -v samtools index ${WD}/alignment.tmp.sorted.bam 2>> ${TIME_BCFTOOLS}
