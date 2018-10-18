@@ -113,7 +113,6 @@ vector<vcf_entry> read_vcf(string path){
 				vcf.push_back(
 
 					{
-
 						chr,
 						pos,
 						ref,
@@ -170,11 +169,19 @@ int main(int argc, char** argv){
 	if(vcf1_path.compare("")==0) help();
 	if(vcf2_path.compare("")==0) help();
 
+	cout << "Reading VCF 1 ... " << flush;
 	auto vcf1 = read_vcf(vcf1_path);
+	cout << "done." << endl;
+	cout << "Reading VCF 2 ... " << flush;
 	auto vcf2 = read_vcf(vcf2_path);
+	cout << "done." << endl;
 
+	cout << "Sorting VCF 1 ... " << flush;
 	sort(vcf1.begin(),vcf1.end());
+	cout << "done." << endl;
+	cout << "Sorting VCF 2 ... " << flush;
 	sort(vcf2.begin(),vcf2.end());
+	cout << "done." << endl;
 
 	/*for(auto v:vcf2){
 

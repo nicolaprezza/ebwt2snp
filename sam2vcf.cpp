@@ -147,7 +147,7 @@ int main(int argc, char** argv){
 			uint64_t pos;//alignment position
 			uint64_t COV_REF;//reads supporting variation on individual 1
 			uint64_t COV_ALT;//reads supporting variation on individual 2
-			uint64_t snp_pos;
+			int snp_pos;
 			string chr;
 			string cigar;
 			string mismatches;
@@ -209,7 +209,7 @@ int main(int argc, char** argv){
 			bool reversed = (f & (unsigned int)16) != 0;
 			bool indel = type.compare("INDEL")==0;
 
-			if(reversed){//then ALT_dna is on RC
+			if(reversed){//then REF_DNA has been reverse-complemented by the aligner. RC also ALT_DNA and the variant
 
 				ALT_dna = RC(ALT_dna);
 				REF = RC(REF);
@@ -223,7 +223,7 @@ int main(int argc, char** argv){
 
 			}
 
-			cout << "event_nr " << event_nr << endl;
+			/*cout << "event_nr " << event_nr << endl;
 			cout << "type " << type<< endl;//INDEL or SNP
 			cout <<  "REF " <<  REF<< endl;//reference allele
 			cout <<  "ALT " <<  ALT<< endl;//alternative allele
@@ -238,7 +238,7 @@ int main(int argc, char** argv){
 			cout <<  "mismatches " <<  mismatches<< endl;
 			cout <<  "flag " <<  f<< endl;
 			cout <<  "indel? " <<  indel<< endl;
-			cout <<  "reversed? " <<  reversed<< endl<< endl;
+			cout <<  "reversed? " <<  reversed<< endl<< endl;*/
 
 
 			//adjust snp_pos in the case we are on FW strand
@@ -250,12 +250,12 @@ int main(int argc, char** argv){
 
 						//insert in REF
 						int indel_len = REF.length();
-						snp_pos = REF_dna.length() - snp_pos - indel_len -1;
+						snp_pos = ((REF_dna.length() - snp_pos) - indel_len) -1;
 
 					}else{
 
 						//insert in ALT
-						snp_pos = REF_dna.length() - snp_pos -1;
+						snp_pos = (REF_dna.length() - snp_pos) - 1;
 
 					}
 
@@ -280,7 +280,7 @@ int main(int argc, char** argv){
 										pos + snp_pos,
 										REF_dna.substr(snp_pos,REF.length()+1),
 										ALT_dna.substr(snp_pos,1),
-										indel,
+										true,
 										exact,
 										COV_REF,
 										COV_ALT
@@ -293,7 +293,7 @@ int main(int argc, char** argv){
 										pos + snp_pos,
 										REF_dna.substr(snp_pos,1),
 										ALT_dna.substr(snp_pos,ALT.length()+1),
-										indel,
+										true,
 										exact,
 										COV_REF,
 										COV_ALT
@@ -309,7 +309,7 @@ int main(int argc, char** argv){
 									pos + snp_pos,
 									REF_dna.substr(snp_pos,1),
 									ALT_dna.substr(snp_pos,1),
-									indel,
+									false,
 									exact,
 									COV_REF,
 									COV_ALT

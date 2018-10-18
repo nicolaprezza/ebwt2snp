@@ -42,7 +42,7 @@ int main(int argc, char** argv){
 
 	string event_type;
 	string event_number;
-	string bases_left;
+	string snp_pos;
 	string cov0;
 	string cov1;
 	string event;
@@ -71,7 +71,7 @@ int main(int argc, char** argv){
 				getline(iss_dots, token, ':');
 				getline(iss_dots, token, ':');
 				std::istringstream iss_underscore(token);
-				getline(iss_underscore, bases_left, '_');
+				getline(iss_underscore, snp_pos, '_');
 				getline(iss_underscore, event, '_');
 
 			}
@@ -79,12 +79,12 @@ int main(int argc, char** argv){
 			getline(iss_bar, cov0, '|');
 
 			header = event_type;
-			header += "_" + event_number + "_" + bases_left + "_" + event + "_" + cov0;
+			header += "_" + event_number + "_" + snp_pos + "_" + event + "_" + cov0;
 
 
 		}
 
-		if(idx%4==1){//DNA of first individual
+		if(idx%4==1){//DNA of first individual (the reference)
 
 			dna = str;
 
@@ -101,7 +101,7 @@ int main(int argc, char** argv){
 
 		}
 
-		if(idx%4==3){//DNA of second individual
+		if(idx%4==3){//DNA of second individual (ALT)
 
 			header += str;
 

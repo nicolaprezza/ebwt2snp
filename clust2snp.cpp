@@ -41,7 +41,7 @@ int consensus_reads = 0;
 int consensus_reads_def = 3;
 
 //max tolerated errors in left-contexts while building consensus
-int max_err_def = 3;
+int max_err_def = 1;
 int max_err = 0;
 
 string input;
