@@ -169,19 +169,10 @@ int main(int argc, char** argv){
 			string REFALT;
 			getline(iss1, REFALT, '_');
 
-			if(REFALT[0]=='/'){
-
-				ALT = REFALT.substr(1);
-				REF = string();
-
-			}else{
-
-				std::istringstream iss2(REFALT);
-				getline(iss2, REF, '/');
-				ALT=string();
-				getline(iss2, ALT, '/');
-
-			}
+			std::istringstream iss2(REFALT);
+			getline(iss2, REF, '/');
+			ALT=string();
+			getline(iss2, ALT, '/');
 
 			getline(iss1, token, '_');
 			COV_REF = atoi(token.c_str());
@@ -231,6 +222,27 @@ int main(int argc, char** argv){
 				}
 
 			}
+
+
+
+
+			cout << "event_nr " << event_nr << endl;
+			cout << "type " << type<< endl;//INDEL or SNP
+			cout <<  "REF " <<  REF<< endl;//reference allele
+			cout <<  "ALT " <<  ALT<< endl;//alternative allele
+			cout <<  "REF_dna " <<  REF_dna<< endl;//reference dna
+			cout <<  "ALT_dna " <<  ALT_dna<< endl;//alternative dna
+			cout <<  "pos " <<  pos<< endl;//alignment position
+			cout <<  "COV_REF " <<  COV_REF<< endl;//reads supporting variation on individual 1
+			cout <<  "COV_ALT " <<  COV_ALT<< endl;//reads supporting variation on individual 2
+			cout <<  "snp_pos " <<  snp_pos<< endl;
+			cout <<  "chr " <<  chr<< endl;
+			cout <<  "cigar " <<  cigar<< endl;
+			cout <<  "mismatches " <<  mismatches<< endl<< endl;
+
+
+
+
 
 			//adjust snp_pos in the case we are on FW strand
 			if(not reversed){
