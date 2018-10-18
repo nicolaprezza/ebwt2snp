@@ -132,7 +132,7 @@ int main(int argc, char** argv){
 
 	while(getline(is, str)){
 
-		if(str[0]!='@'){//skip header
+		if(str[0]!='@' and str[0]!='['){//skip header
 
 			string name;//entry name
 			std::istringstream iss(str);
