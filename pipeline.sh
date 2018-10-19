@@ -205,7 +205,7 @@ fi
 # 11. Generates VCF (eBWTclust calls) using sam2vcf -> reads1.reads2.frc.<c>.snp.sam.vcf
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf ]; then
-	echo "Generating eBWTclust's VCF in "${WD}/${READS1}.${READS2}.frc.${C}.snp.vcf" ..."
+	echo "Generating eBWTclust's VCF in "${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf" ..."
 	sam2vcf -s ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam
 fi
 
