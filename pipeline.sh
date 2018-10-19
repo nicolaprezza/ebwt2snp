@@ -150,6 +150,7 @@ if [ "$samtool_version" -eq "1" ]; then
 		samtools index ${WD}/alignment.tmp.sorted.bam
 		bcftools mpileup -f ${WD}/${REF} ${WD}/alignment.tmp.sorted.bam | bcftools call -mv -o ${WD}/calls.tmp.vcf
 		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/calls.tmp.vcf > ${WD}/calls_filtered.tmp.vcf
+		mv ${WD}/calls.tmp.vcf ${WD}/calls_used_to_build_reference_unfiltered.vcf
 		bgzip ${WD}/calls_filtered.tmp.vcf
 		vcf2fasta.sh ${WD}/calls_filtered.tmp.vcf.gz ${WD}/${REF} > ${WD}/${READS1}.reference.fasta
 		mv ${WD}/calls_filtered.tmp.vcf.gz ${WD}/calls_used_to_build_reference.vcf.gz
@@ -166,7 +167,8 @@ else
 		#OLD SAMTOOLS/BCFTOOLS
 		samtools mpileup -uD -f ${WD}/${REF} ${WD}/alignment.tmp.sorted.bam > ${WD}/mpileup.tmp
 		bcftools view -vc ${WD}/mpileup.tmp > ${WD}/calls.tmp.vcf
-		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/calls.tmp.vcf > ${WD}/calls_filtered.tmp.vcf		
+		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/calls.tmp.vcf > ${WD}/calls_filtered.tmp.vcf	
+		mv ${WD}/calls.tmp.vcf ${WD}/calls_used_to_build_reference_unfiltered.vcf	
 
 		bgzip ${WD}/calls_filtered.tmp.vcf
 		vcf2fasta.sh ${WD}/calls_filtered.tmp.vcf.gz ${WD}/${REF} > ${WD}/${READS1}.reference.fasta
@@ -208,7 +210,7 @@ if [ "$samtool_version" -eq "1" ]; then
 		/usr/bin/time -v bcftools mpileup -f ${WD}/${READS1}.reference.fasta ${WD}/alignment.tmp.sorted.bam | bcftools call -mv -o ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf 2>> ${TIME_BCFTOOLS}
 		
 		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf > ${WD}/${READS1}.${READS2}.bcftools.vcf 		
-		rm ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf 		
+		#rm ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf 		
 
 		rm ${WD}/*.tmp*
 	fi
@@ -225,7 +227,7 @@ else
 		/usr/bin/time -v bcftools view -vc ${WD}/mpileup.tmp > ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf
 
 		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf > ${WD}/${READS1}.${READS2}.bcftools.vcf 		
-		rm ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf 		
+		#rm ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf 		
 
 		rm ${WD}/*.tmp*
 	fi
