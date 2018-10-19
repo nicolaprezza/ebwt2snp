@@ -149,9 +149,15 @@ if [ "$samtool_version" -eq "1" ]; then
 		samtools sort ${WD}/alignment.tmp.bam > ${WD}/alignment.tmp.sorted.bam
 		samtools index ${WD}/alignment.tmp.sorted.bam
 		bcftools mpileup -f ${WD}/${REF} ${WD}/alignment.tmp.sorted.bam | bcftools call -mv -o ${WD}/calls.tmp.vcf
-		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/calls.tmp.vcf > ${WD}/calls_filtered.tmp.vcf
+
+		#filter VCF
+		cat ${WD}/calls.tmp.vcf | grep '^#' > ${WD}/H
+		cat ${WD}/calls.tmp.vcf | grep -v ^# |  awk '$6>14' > ${WD}/B
+		cat ${WD}/H ${WD}/B > ${WD}/calls_filtered.tmp.vcf
 		mv ${WD}/calls.tmp.vcf ${WD}/calls_used_to_build_reference_unfiltered.vcf
 		bgzip ${WD}/calls_filtered.tmp.vcf
+		rm ${WD}/H ${WD}/B
+
 		vcf2fasta.sh ${WD}/calls_filtered.tmp.vcf.gz ${WD}/${REF} > ${WD}/${READS1}.reference.fasta
 		mv ${WD}/calls_filtered.tmp.vcf.gz ${WD}/calls_used_to_build_reference.vcf.gz
 		rm ${WD}/*.tmp*
@@ -167,10 +173,15 @@ else
 		#OLD SAMTOOLS/BCFTOOLS
 		samtools mpileup -uD -f ${WD}/${REF} ${WD}/alignment.tmp.sorted.bam > ${WD}/mpileup.tmp
 		bcftools view -vc ${WD}/mpileup.tmp > ${WD}/calls.tmp.vcf
-		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/calls.tmp.vcf > ${WD}/calls_filtered.tmp.vcf	
-		mv ${WD}/calls.tmp.vcf ${WD}/calls_used_to_build_reference_unfiltered.vcf	
-
+		
+		#filter VCF
+		cat ${WD}/calls.tmp.vcf | grep '^#' > ${WD}/H
+		cat ${WD}/calls.tmp.vcf | grep -v ^# |  awk '$6>14' > ${WD}/B
+		cat ${WD}/H ${WD}/B > ${WD}/calls_filtered.tmp.vcf
+		mv ${WD}/calls.tmp.vcf ${WD}/calls_used_to_build_reference_unfiltered.vcf
 		bgzip ${WD}/calls_filtered.tmp.vcf
+		rm ${WD}/H ${WD}/B
+
 		vcf2fasta.sh ${WD}/calls_filtered.tmp.vcf.gz ${WD}/${REF} > ${WD}/${READS1}.reference.fasta
 		mv ${WD}/calls_filtered.tmp.vcf.gz ${WD}/calls_used_to_build_reference.vcf.gz
 		rm ${WD}/*.tmp*
@@ -209,8 +220,11 @@ if [ "$samtool_version" -eq "1" ]; then
 		/usr/bin/time -v samtools index ${WD}/alignment.tmp.sorted.bam 2>> ${TIME_BCFTOOLS}
 		/usr/bin/time -v bcftools mpileup -f ${WD}/${READS1}.reference.fasta ${WD}/alignment.tmp.sorted.bam | bcftools call -mv -o ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf 2>> ${TIME_BCFTOOLS}
 		
-		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf > ${WD}/${READS1}.${READS2}.bcftools.vcf 		
-		#rm ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf 		
+		#filter VCF
+		cat ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf | grep '^#' > ${WD}/H
+		cat ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf | grep -v ^# |  awk '$6>14' > ${WD}/B
+		cat ${WD}/H ${WD}/B > ${WD}/${READS1}.${READS2}.bcftools.vcf
+		rm ${WD}/H ${WD}/B
 
 		rm ${WD}/*.tmp*
 	fi
@@ -226,8 +240,11 @@ else
 		/usr/bin/time -v samtools mpileup -uD -f ${WD}/${READS1}.reference.fasta ${WD}/alignment.tmp.sorted.bam > ${WD}/mpileup.tmp 2>> ${TIME_BCFTOOLS}
 		/usr/bin/time -v bcftools view -vc ${WD}/mpileup.tmp > ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf
 
-		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf > ${WD}/${READS1}.${READS2}.bcftools.vcf 		
-		#rm ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf 		
+		#filter VCF
+		cat ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf | grep '^#' > ${WD}/H
+		cat ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf | grep -v ^# |  awk '$6>14' > ${WD}/B
+		cat ${WD}/H ${WD}/B > ${WD}/${READS1}.${READS2}.bcftools.vcf
+		rm ${WD}/H ${WD}/B
 
 		rm ${WD}/*.tmp*
 	fi
