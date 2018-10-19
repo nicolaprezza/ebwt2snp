@@ -152,7 +152,8 @@ if [ "$samtool_version" -eq "1" ]; then
 		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/calls.tmp.vcf > ${WD}/calls_filtered.tmp.vcf
 		bgzip ${WD}/calls_filtered.tmp.vcf
 		vcf2fasta.sh ${WD}/calls_filtered.tmp.vcf.gz ${WD}/${REF} > ${WD}/${READS1}.reference.fasta
-		rm *.tmp*
+		mv ${WD}/calls_filtered.tmp.vcf.gz ${WD}/calls_used_to_build_reference.vcf.gz
+		rm ${WD}/*.tmp*
 	fi
 else
 	if [ ! -f ${WD}/${READS1}.reference.fasta ]; then
@@ -169,6 +170,7 @@ else
 
 		bgzip ${WD}/calls_filtered.tmp.vcf
 		vcf2fasta.sh ${WD}/calls_filtered.tmp.vcf.gz ${WD}/${REF} > ${WD}/${READS1}.reference.fasta
+		mv ${WD}/calls_filtered.tmp.vcf.gz ${WD}/calls_used_to_build_reference.vcf.gz
 		rm ${WD}/*.tmp*
 	fi
 fi
@@ -208,7 +210,7 @@ if [ "$samtool_version" -eq "1" ]; then
 		bcftools view -i 'AVG(GQ)>14 & AVG(FMT/DP)>4' ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf > ${WD}/${READS1}.${READS2}.bcftools.vcf 		
 		rm ${WD}/${READS1}.${READS2}.bcftools_unfilt.vcf 		
 
-		rm *.tmp*
+		rm ${WD}/*.tmp*
 	fi
 else
 	if [ ! -f ${WD}/${READS1}.${READS2}.bcftools.vcf ]; then
