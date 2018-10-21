@@ -120,7 +120,7 @@ fi
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp ]; then
 	echo "running clust2snp ..."
-	/usr/bin/time -v clust2snp -i ${WD}/${READS1}.${READS2}.frc.fasta -n $N -m $M -c $C -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_CLUST2SNP} 2>&1
+	/usr/bin/time -v clust2snp -i ${WD}/${READS1}.${READS2}.frc.fasta -n $N -m $M -c $C -e 3 -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_CLUST2SNP} 2>&1
 	mv ${WD}/${READS1}.${READS2}.frc.snp ${WD}/${READS1}.${READS2}.frc.${C}.snp
 fi
 
@@ -207,6 +207,10 @@ fi
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf ]; then
 	echo "Generating eBWTclust's VCF in "${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf" ..."
 	sam2vcf -s ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam
+
+	#Filter the VCF: keep only variations testified by at least 4 reads (in both REF and ALT)
+	mv ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.unfiltered.vcf
+	cat ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.unfiltered.vcf | awk '$8>=4 && $9>=4' > ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf
 fi
 
 # 12. Generates VCF (bcftools calls) using BWA MEM + bcftools -> reads1.reads2.bcftools.vcf
