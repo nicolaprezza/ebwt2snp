@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <math.h>
 #include <iomanip>
-#include "read64_t.hpp"
 
 using namespace std;
 
@@ -38,7 +37,7 @@ int max_gap = 0;
 int max_gap_def = 10;
 
 int consensus_reads = 0;
-int consensus_reads_def = 3;
+int consensus_reads_def = 5;
 
 //max tolerated errors in left-contexts while building consensus
 int max_err_def = 1;
@@ -72,7 +71,7 @@ void help(){
 	"-L <arg>    Length of left-context, SNP included (default: " << k_left_def << ")." << endl <<
 	"-R <arg>    Length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
 	"-g <arg>    Maximum allowed gap length in indel (default: " << max_gap_def << "). If 0, indels are disabled."<< endl <<
-	"-v <arg>    Maximum number of mismatches allowed in left context, main SNP/indel excluded (default: " << max_snvs_def << ")."<< endl <<
+	"-v <arg>    Maximum number of non-isolated SNPs in left-contexts. The central SNP/indel is excluded from this count (default: " << max_snvs_def << ")."<< endl <<
 	"-m <arg>    Minimum coverage per sample per event  (default: " << mcov_out_def << ").  We output only SNPs where each of the" << endl <<
 	"            two variants are represented at least <arg> times in the reads.  The minimum cluster length" << endl <<
 	"            is automatically set as 2*<arg>."<< endl <<
@@ -88,7 +87,7 @@ void help(){
 
 
 	"\nTo run clust2snp, you must first build (1) the Enhanced Generalized Suffix Array of the input sequences" << endl <<
-	"and the  cluster file built with eBWTclust. Output is stored in reads.snp (this  is actually a fasta" << endl <<
+	"and the  cluster file built with ebwt2snp. Output is stored in reads.snp (this  is actually a fasta" << endl <<
 	"file), where reads.fasta is the input fasta file." << endl << endl <<
 
 	"Output:  SNPs are output in KisSNP2 format as a fasta file. IMPORTANT: in many cases, each SNP/indel is" << endl <<

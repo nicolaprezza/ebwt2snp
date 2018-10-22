@@ -22,7 +22,7 @@ bool non_isolated = true;
 
 void help(){
 
-	cout << "compareVCF [OPTIONS]" << endl << endl <<
+	cout << "vcf_vs_vcf [OPTIONS]" << endl << endl <<
 	"Compute sensitivity and specificity of the calls specified with -1 against those specified with -2." << endl <<
 	"Options:" << endl <<
 		"-h          Print this help." << endl <<

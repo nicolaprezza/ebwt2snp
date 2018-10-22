@@ -26,7 +26,7 @@ int rlength = 0;
 
 void help(){
 
-	cout << "validate [options]" << endl <<
+	cout << "snp_vs_vcf [options]" << endl <<
 	"Options:" << endl <<
 	"-h          Print this help" << endl <<
 	"-v <arg>    VCF file with the ground-truth SNPs (REQUIRED)" << endl <<

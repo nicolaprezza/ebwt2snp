@@ -8,7 +8,7 @@ endif()
 
 #set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/.. )
 
-project (eBWTclust)
+project (ebwt2snp)
 
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/internal)
@@ -21,10 +21,10 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -ggdb -Ofast -fstrict-aliasing -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -Ofast -fstrict-aliasing -march=native")
 
-add_executable(compareVCF compareVCF.cpp)
+add_executable(vcf_vs_vcf vcf_vs_vcf.cpp)
 add_executable(sam2vcf sam2vcf.cpp)
 add_executable(snp2fastq snp2fastq.cpp)
 add_executable(clust2snp clust2snp.cpp)
-add_executable(eBWTclust eBWTclust.cpp)
-add_executable(validate validate.cpp)
+add_executable(ebwt2clust ebwt2clust.cpp)
+add_executable(snp_vs_vcf snp_vs_vcf.cpp)
 add_executable(differentialVCF differentialVCF.cpp)

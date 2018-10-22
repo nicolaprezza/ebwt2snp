@@ -33,7 +33,7 @@ int min_len=0;
 
 void help(){
 
-	cout << "eBWTclust [options]" << endl <<
+	cout << "ebwt2clust [options]" << endl <<
 	"Options:" << endl <<
 	"-h         Print this help" << endl <<
 	"-i <arg>   Input fasta file (REQUIRED)" << endl <<
@@ -43,7 +43,7 @@ void help(){
 	"-y <arg>   Byte size of DA integers (read number) in input EGSA/BCR file (default: " << da_def <<  ")." << endl <<
 	"-z <arg>   Byte size of pos integers (position in read) in input EGSA/BCR file (default: " << pos_def <<  ")." << endl << endl <<
 
-	"\nTo run eBWTclust, you must  first build the Enhanced Generalized  Suffix Array of the input" << endl <<
+	"\nTo run ebwt2clust, you must  first build the Enhanced Generalized  Suffix Array of the input" << endl <<
 	"sequences. The EGSA must be stored in the input file's folder adding extension .gesa to the" << endl <<
 	"name of the input file (github.com/felipelouza/egsa),or in three files with extensions" << endl <<
 	".out, .out.lcp, .out.pairSA computed using the BCR algorithm " << endl <<
@@ -184,7 +184,7 @@ int main(int argc, char** argv){
 	egsa_stream EGSA(input);
 	EGSA.set_bytesizes(lcp,da,pos);
 
-	cout << "This is eBWTclust. Input file: " << input << endl;
+	cout << "This is ebwt2clust. Input file: " << input << endl;
 
 	string filename_out = input;
 	filename_out.append(".clusters");
