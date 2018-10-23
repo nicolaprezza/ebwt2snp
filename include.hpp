@@ -330,3 +330,43 @@ inline int popcount128(uint128_t u){
 	return __builtin_popcountl(uint64_t(u)) + __builtin_popcountl(uint64_t(u>>64));
 
 }
+
+class cons{
+
+public:
+
+	cons(int size){
+
+		counts = vector<vector<int>>(size,vector<int>(4,0));
+		C = string(size,'A');
+
+	}
+
+	unsigned char operator[](int i){
+		return C[i];
+	}
+
+	void increment(int i, unsigned char b){
+
+		int b_i = base_to_int(b);
+
+		counts[i][b_i]++;
+
+		if( counts[i][b_i] > counts[i][ base_to_int(C[i]) ])
+			C[i] = b;
+
+	}
+
+	string to_string(){
+
+		return C;
+
+	}
+
+private:
+
+	string C;//the current consensus
+	vector<vector<int>> counts;//base counts
+
+};
+

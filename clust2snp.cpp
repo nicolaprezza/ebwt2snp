@@ -521,6 +521,12 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 	//get the reads as strings
 	get_reads(fasta_path, read_ranks, reads);
 
+	//invert read_ranks for fast access
+	auto read_ranks_inv = vector<uint64_t>(read_ranks[read_ranks.size()-1]+1);
+
+	for(uint64_t i=0;i<read_ranks.size();++i)
+		read_ranks_inv[read_ranks[i]] = i;
+
 	cout << "(3/4) Filtering " << candidate_variants.size() <<  " candidates and computing consensus of left-contexts ... " << endl;
 
 	uint64_t idx=0;
@@ -528,42 +534,70 @@ vector<variant_t> extract_variants(vector<candidate_variant> & candidate_variant
 
 	for(auto v:candidate_variants){
 
-		//left contexts extracted from individuals 0 and 1
-		vector<string> left_0;
-		vector<string> left_1;
+		//left 0
+		cons left0(k_left);
+		for(int j=0; j<v.left_context_idx_0.size(); ++j){
+
+			uint64_t idx = read_ranks_inv[v.left_context_idx_0[j]];
+
+			for(int i=0; i<k_left;++i)
+				left0.increment(i,reads[idx][v.left_context_pos_0[j]+i]);
+
+		}
+
+		int supp0=0;
 
 		for(int j=0; j<v.left_context_idx_0.size(); ++j){
 
-			uint64_t idx = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.left_context_idx_0[j]) );
-			left_0.push_back(reads[idx].substr(v.left_context_pos_0[j],k_left));
+			uint64_t idx = read_ranks_inv[v.left_context_idx_0[j]];
+
+			//compute d_H
+			int d_H=0;
+			for(int i=0; i<k_left;++i)
+				d_H += left0[i] != reads[idx][v.left_context_pos_0[j]+i];
+
+			if(d_H <= max_err) supp0++;
 
 		}
+
+		//left 1
+		cons left1(k_left);
+		for(int j=0; j<v.left_context_idx_1.size(); ++j){
+
+			uint64_t idx = read_ranks_inv[v.left_context_idx_1[j]];
+
+			for(int i=0; i<k_left;++i)
+				left1.increment(i,reads[idx][v.left_context_pos_1[j]+i]);
+
+		}
+
+		int supp1=0;
 
 		for(int j=0; j<v.left_context_idx_1.size(); ++j){
 
-			uint64_t idx = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.left_context_idx_1[j]) );
-			left_1.push_back(reads[idx].substr(v.left_context_pos_1[j],k_left));
+			uint64_t idx = read_ranks_inv[v.left_context_idx_1[j]];
+
+			//compute d_H
+			int d_H=0;
+			for(int i=0; i<k_left;++i)
+				d_H += left1[i] != reads[idx][v.left_context_pos_1[j]+i];
+
+			if(d_H <= max_err) supp1++;
 
 		}
 
-		pair<string, int> C0 = consensus(left_0);
-		pair<string, int> C1 = consensus(left_1);
+		if(supp0 > 0 and supp1 > 0){
 
-		string left_0_consensus = C0.first;
-		string left_1_consensus = C1.first;
-
-		if(left_0_consensus.size()>0 and left_1_consensus.size()>0){
-
-			uint64_t r_idx = std::distance( read_ranks.begin(), std::find( read_ranks.begin(), read_ranks.end(), v.right_context_idx) );
+			uint64_t r_idx = read_ranks_inv[v.right_context_idx];
 
 			out.push_back(
 
 				{
-					left_0_consensus,
-					left_1_consensus,
+					left0.to_string(),
+					left1.to_string(),
 					reads[r_idx].substr(v.right_context_pos,k_right),
-					C0.second,
-					C1.second
+					supp0,
+					supp1
 				}
 
 			);
