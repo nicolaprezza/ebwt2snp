@@ -21,6 +21,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -ggdb -Ofast -fstrict-aliasing -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -Ofast -fstrict-aliasing -march=native")
 
+add_executable(filter_snp filter_snp.cpp)
 add_executable(vcf_vs_vcf vcf_vs_vcf.cpp)
 add_executable(sam2vcf sam2vcf.cpp)
 add_executable(snp2fastq snp2fastq.cpp)
