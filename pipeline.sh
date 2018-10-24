@@ -28,8 +28,8 @@
 
 #Byte size of EGSA fields
 GSAtext=4
-GSAsuff=4
-LCP=4
+GSAsuff=1
+LCP=1
 
 WD=$(dirname $(readlink -f "$1"))
 
@@ -112,7 +112,7 @@ fi
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.fasta.clusters ]; then
 	echo "running ebwt2clust ..."
-	/usr/bin/time -v ebwt2clust -i ${WD}/${READS1}.${READS2}.frc.fasta -m $((M*2)) -x ${LCP} -y ${GSAtext} -z ${GSAsuff} -k 30 > ${TIME_EBWTCLUST} 2>&1
+	/usr/bin/time -v ebwt2clust -i ${WD}/${READS1}.${READS2}.frc.fasta -m $((M*2)) -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_EBWTCLUST} 2>&1
 fi
 
 # 5.  Run clust2snp -> reads1.reads2.frc.snp
