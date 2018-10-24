@@ -37,7 +37,7 @@ int max_gap = 0;
 int max_gap_def = 10;
 
 int consensus_reads = 0;
-int consensus_reads_def = 5;
+int consensus_reads_def = 20;
 
 //max tolerated errors in left-contexts while building consensus
 int max_err_def = 2;
@@ -72,15 +72,12 @@ void help(){
 	"-R <arg>    Length of right context, SNP excluded (default: " << k_right_def << ")." << endl <<
 	"-g <arg>    Maximum allowed gap length in indel (default: " << max_gap_def << "). If 0, indels are disabled."<< endl <<
 	"-v <arg>    Maximum number of non-isolated SNPs in left-contexts. The central SNP/indel is excluded from this count (default: " << max_snvs_def << ")."<< endl <<
-	"-m <arg>    Minimum coverage per sample per event  (default: " << mcov_out_def << ").  We output only SNPs where each of the" << endl <<
-	"            two variants are represented at least <arg> times in the reads.  The minimum cluster length" << endl <<
-	"            is automatically set as 2*<arg>."<< endl <<
-	"-c <arg>    Extract this maximum number of reads per individual to compute consensus (default: " << consensus_reads_def << ")."<< endl <<
-	"-e <arg>    Max tolerated number of errors while computing consensus (default: " << max_err_def << ")."<< endl <<
+	"-c <arg>    Extract this maximum number of reads per individual to compute consensus of left-context (default: " << consensus_reads_def << ")."<< endl <<
+	"-e <arg>    Mismatches allowed between DNA fragments forming consensus of left-context (default: " << max_err_def << ")."<< endl <<
+	"-m <arg>    Minimum cluster length per individual (default: " << mcov_out_def << "). The minimum cluster length (for the 2 individuals) is 2*<arg>." <<  endl <<
 	"-p <arg>    Automatically choose max cluster length so that this fraction of bases is analyzed (default: " << endl <<
-	"            " << pval_def << ")."<< endl <<
-	"-M <arg>    Maximum cluster length. This could be overwritten by the value automatically computed using" << endl <<
-	"            the fraction specified with option -p (default: " << max_clust_length_def << ")."<< endl <<
+	"            " << pval_def << "). In any case, the maximum cluster length will not exceed the value specified with -M."<< endl <<
+	"-M <arg>    Maximum cluster length. Read the description of option -p." << endl <<
 	"-x <arg>    Byte size of LCP integers in input EGSA/BCR file (default: " << lcp_def <<  ")." << endl <<
 	"-y <arg>    Byte size of DA integers (read number) in input EGSA/BCR file (default: " << da_def <<  ")." << endl <<
 	"-z <arg>    Byte size of pos integers (position in read) in input EGSA/BCR file (default: " << pos_def <<  ")." << endl << endl <<
