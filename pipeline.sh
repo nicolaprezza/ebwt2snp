@@ -54,8 +54,8 @@ REF=`basename $3`
 #parameter -c in clust2snp (max reads in consensus. Ideally big, but bigger slows down computation)
 C=$4
 
-#parameter -m in clust2snp (we keep this fixed: at least 10 reads per individual in cluster)
-M=10
+#parameter -m in clust2snp (we keep this fixed: at least 4 reads per individual in cluster)
+M=4
 
 TIME_EGSA=${WD}/egsa.time
 TIME_EBWTCLUST=${WD}/ebwt2clust.time
@@ -119,7 +119,7 @@ fi
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp ]; then
 	echo "running clust2snp ..."
-	/usr/bin/time -v clust2snp -i ${WD}/${READS1}.${READS2}.frc.fasta -n $N -m $M -c $C -e 3 -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_CLUST2SNP} 2>&1
+	/usr/bin/time -v clust2snp -i ${WD}/${READS1}.${READS2}.frc.fasta -n $N -m $M -c $C -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_CLUST2SNP} 2>&1
 	mv ${WD}/${READS1}.${READS2}.frc.snp ${WD}/${READS1}.${READS2}.frc.${C}.snp
 fi
 
