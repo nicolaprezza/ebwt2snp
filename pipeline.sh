@@ -1,4 +1,4 @@
-# Usage: pipeline.sh <reads1.fastq> <reads2.fastq> <reference.fasta> <c>
+# Usage: pipeline.sh <reads1.fastq> <reads2.fastq> <reference.fasta>
 #
 # behaviour (the steps are skipped if the file they will produce already exists)
 # 1.  Converts input reads to fasta -> reads1.fasta reads2.fasta 
@@ -52,7 +52,7 @@ READS2="${READS2%.*}"
 REF=`basename $3`
 
 #parameter -c in clust2snp (max reads in consensus. Ideally big, but bigger slows down computation)
-C=$4
+#C=$4
 
 #parameter -m in clust2snp (we keep this fixed: at least 4 reads per individual in cluster)
 M=4
@@ -63,7 +63,7 @@ TIME_CLUST2SNP=${WD}/clust2snp.time
 TIME_BWAMEM=${WD}/bwamem.time
 TIME_BWAIDX=${WD}/bwaindex.time
 TIME_BCFTOOLS=${WD}/bcftools.time
-REPORT_OUT=${WD}/report_${C}
+REPORT_OUT=${WD}/report
 
 samtool_version=`samtools 2>&1 >/dev/null | grep Version | cut -d' ' -f 2 | cut -d. -f 1`
 
@@ -115,19 +115,19 @@ if [ ! -f ${WD}/${READS1}.${READS2}.frc.fasta.clusters ]; then
 	/usr/bin/time -v ebwt2clust -i ${WD}/${READS1}.${READS2}.frc.fasta -m $((M*2)) -x ${LCP} -y ${GSAtext} -z ${GSAsuff} -k 30 > ${TIME_EBWTCLUST} 2>&1
 fi
 
-# 5.  Run clust2snp with parameters m, c -> reads1.reads2.frc.<c>.snp
+# 5.  Run clust2snp -> reads1.reads2.frc.snp
 
 if [ ! -f ${WD}/${READS1}.${READS2}.frc.snp ]; then
 	echo "running clust2snp ..."
 	/usr/bin/time -v clust2snp -i ${WD}/${READS1}.${READS2}.frc.fasta -n $N -x ${LCP} -y ${GSAtext} -z ${GSAsuff} > ${TIME_CLUST2SNP} 2>&1
 fi
 
-# 6.  Run snp2fastq -> reads1.reads2.frc.<c>.snp.fastq
+# 6.  Run snp2fastq -> reads1.reads2.frc.snp.fastq
 
-if [ ! -f ${WD}/${READS1}.${READS2}.frc.snp.fastq ]; then
-	echo "converting .snp to .fastq ..."
-	snp2fastq ${WD}/${READS1}.${READS2}.frc.snp
-fi
+#if [ ! -f ${WD}/${READS1}.${READS2}.frc.snp.fastq ]; then
+#	echo "converting .snp to .fastq ..."
+#	snp2fastq ${WD}/${READS1}.${READS2}.frc.snp
+#fi
 
 
 # 7.  Builds BWA MEM index of reference.fasta -> reference.fasta.{amb,ann,bwt,fai,pac,sa} files
@@ -193,22 +193,22 @@ if [ ! -f ${WD}/${READS1}.reference.fasta.amb ]; then
 	/usr/bin/time -v bwa index ${WD}/${READS1}.reference.fasta > ${TIME_BWAIDX} 2>&1
 fi
 
-# 10.  Aligns reads1.reads2.frc.<c>.snp.fastq on reads1.reference.fasta -> reads1.reads2.frc.<c>.snp.sam
+# 10.  Aligns reads1.reads2.frc.snp.fastq on reads1.reference.fasta -> reads1.reads2.frc.snp.sam
 
-if [ ! -f ${WD}/${READS1}.${READS2}.frc.snp.sam ]; then
-	echo "Aligning "${WD}/${READS1}.${READS2}.frc.snp.fastq" on "${WD}/${READS1}.reference.fasta" ..."
-	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS1}.${READS2}.frc.snp.fastq -o ${WD}/${READS1}.${READS2}.frc.snp.sam 
-fi
+#if [ ! -f ${WD}/${READS1}.${READS2}.frc.snp.sam ]; then
+#	echo "Aligning "${WD}/${READS1}.${READS2}.frc.snp.fastq" on "${WD}/${READS1}.reference.fasta" ..."
+#	bwa mem ${WD}/${READS1}.reference.fasta ${WD}/${READS1}.${READS2}.frc.snp.fastq -o ${WD}/${READS1}.${READS2}.frc.snp.sam 
+#fi
 
-# 11. Generates VCF (ebwt2snp calls) using sam2vcf -> reads1.reads2.frc.<c>.snp.sam.vcf
+# 11. Generates VCF (ebwt2snp calls) using sam2vcf -> reads1.reads2.frc.snp.sam.vcf
 
-if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf ]; then
-	echo "Generating ebwt2snp's VCF in "${WD}/${READS1}.${READS2}.frc.snp.sam.vcf" ..."
-	sam2vcf -s ${WD}/${READS1}.${READS2}.frc.snp.sam
+#if [ ! -f ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf ]; then
+#	echo "Generating ebwt2snp's VCF in "${WD}/${READS1}.${READS2}.frc.snp.sam.vcf" ..."
+#	sam2vcf -s ${WD}/${READS1}.${READS2}.frc.snp.sam
 
 	#Filter the VCF: keep only variations testified by at least C reads (in both REF and ALT)
-	cat ${WD}/${READS1}.${READS2}.frc.snp.sam.vcf | awk -v c="$C" '$8>=c && $9>=c' > ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf
-fi
+#	cat ${WD}/${READS1}.${READS2}.frc.snp.sam.vcf | awk -v c="$C" '$8>=c && $9>=c' > ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf
+#fi
 
 # 12. Generates VCF (bcftools calls) using BWA MEM + bcftools -> reads1.reads2.bcftools.vcf
 
@@ -252,10 +252,14 @@ else
 fi
 
 
-# 13. Generate report containing precision/recall of ebwt2snp pipeline (using BWA+bcftools pipeline as ground truth)
+# 13. Compute precision/sensitivity of ebwt2snp pipeline using different thresholds for minimum coverage
 
-if [ ! -f ${WD}/${READS1}.${READS2}.report.${C}.tsv ]; then
-	vcf_vs_vcf -1 ${WD}/${READS1}.${READS2}.frc.${C}.snp.sam.vcf -2 ${WD}/${READS1}.${READS2}.bcftools.vcf > ${REPORT_OUT}
+if [ ! -f ${WD}/${READS1}.${READS2}.report_3 ]; then
+
+	for i in {3..10}; do
+		filter_snp ${WD}/${READS1}.${READS2}.frc.snp $i > ${WD}/${READS1}.${READS2}.frc.cov_${i}.snp
+		snp_vs_vcf -v ${WD}/${READS1}.${READS2}.bcftools.vcf -c ${WD}/${READS1}.${READS2}.frc.cov_${i}.snp -f ${WD}/${READS1}.reference.fasta > ${WD}/${READS1}.${READS2}.report_${i}
+	done
 fi
 
 
