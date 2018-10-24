@@ -256,14 +256,11 @@ fi
 
 if [ ! -f ${WD}/${READS1}.${READS2}.report_3 ]; then
 
-	for i in {3..10}; do
+	for i in $(seq 3 10); do
 		filter_snp ${WD}/${READS1}.${READS2}.frc.snp $i > ${WD}/${READS1}.${READS2}.frc.cov_${i}.snp
 		snp_vs_vcf -v ${WD}/${READS1}.${READS2}.bcftools.vcf -c ${WD}/${READS1}.${READS2}.frc.cov_${i}.snp -f ${WD}/${READS1}.reference.fasta > ${WD}/${READS1}.${READS2}.report_${i}
 	done
 fi
-
-
-
 
 
 
