@@ -40,7 +40,7 @@ int consensus_reads = 0;
 int consensus_reads_def = 5;
 
 //max tolerated errors in left-contexts while building consensus
-int max_err_def = 1;
+int max_err_def = 2;
 int max_err = 0;
 
 string input;
@@ -452,15 +452,24 @@ vector<candidate_variant> find_variants(vector<t_GSA> & gsa_cluster){
 					bool sample = e.text < nr_reads1 ? 0 : 1;
 					uint64_t prefix_len = e.suff;
 					unsigned char ch = e.bwt;
+					uint64_t lcp = e.lcp;
 
-					if(prefix_len >= k_left and ch == c0 and sample == 0 and left_idx_0.size()<consensus_reads){
+					if(	prefix_len >= k_left and
+						ch == c0 and
+						sample == 0 and
+						lcp >= k_right and //TODO test
+						left_idx_0.size()<consensus_reads){
 
 						left_idx_0.push_back(e.text);
 						left_pos_0.push_back(e.suff-k_left);
 
 					}
 
-					if(prefix_len >= k_left and ch == c1 and sample == 1 and left_idx_1.size()<consensus_reads){
+					if(	prefix_len >= k_left and
+						ch == c1 and
+						sample == 1 and
+						lcp >= k_right and //TODO test
+						left_idx_1.size()<consensus_reads){
 
 						left_idx_1.push_back(e.text);
 						left_pos_1.push_back(e.suff-k_left);
