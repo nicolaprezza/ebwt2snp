@@ -27,7 +27,7 @@ void help(){
 
 int main(int argc, char** argv){
 
-	if(argc != 2 or argc != 3) help();
+	if(argc != 2 and argc != 3) help();
 
 	if(argc == 3){
 
