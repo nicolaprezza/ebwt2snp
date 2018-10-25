@@ -13,18 +13,31 @@
 
 using namespace std;
 
+bool switch_ = false;
+
 void help(){
 
-	cout << "snp2fastq calls.snp" << endl << endl <<
+	cout << "snp2fastq calls.snp [-i]" << endl << endl <<
 	"Converts clust2snp's calls 'calls.snp' into a fastq  file 'calls.snp.fastq'. The  output contains  one " << endl <<
 	"read per call, where we put the second individual's DNA in the read's name, and the first individual's " << endl <<
-	"DNA in the read DNA. Base qualities are fake (all maximum)." << endl;
+	"DNA in the read DNA. Base qualities are fake (all maximum). If option -i is specified, then individuals" << endl <<
+	"are switched." << endl;
 	exit(0);
 }
 
 int main(int argc, char** argv){
 
-	if(argc != 2) help();
+	if(argc != 2 or argc != 3) help();
+
+	if(argc == 3){
+
+		if(string(argv[2]).compare("-i")==0){
+			switch_=true;
+		}else{
+			help();
+		}
+
+	}
 
 	string infile = argv[1];
 
@@ -49,7 +62,10 @@ int main(int argc, char** argv){
 
 	while(getline(is, str)){
 
-		if(idx%4==0){//first line of call
+		if( ((switch_) and idx%4==2) or ((not switch_) and idx%4==0)  ){//header
+
+			//if switch is false, this is activated on line number 0 (header first indiv)
+			//if switch is true, this is activated on line number 2 (header second indiv)
 
 			std::istringstream iss_bar(str);
 			std::string token;
@@ -84,13 +100,19 @@ int main(int argc, char** argv){
 
 		}
 
-		if(idx%4==1){//DNA of first individual (the reference)
+		if( ((switch_) and idx%4==3) or ((not switch_) and idx%4==1)  ){//DNA
+
+			//if switch is false, this is activated on line number 1 (DNA first indiv)
+			//if switch is true, this is activated on line number 3 (DNA second indiv)
 
 			dna = str;
 
 		}
 
-		if(idx%4==2){//header second individual
+		if( ((switch_) and idx%4==0) or ((not switch_) and idx%4==2)  ){//header
+
+			//if switch is false, this is activated on line number 2 (header second indiv)
+			//if switch is true, this is activated on line number 0 (header first indiv)
 
 			std::istringstream iss_bar(str);
 			getline(iss_bar, cov1, '|');
@@ -101,15 +123,20 @@ int main(int argc, char** argv){
 
 		}
 
-		if(idx%4==3){//DNA of second individual (ALT)
+		if( ((switch_) and idx%4==1) or ((not switch_) and idx%4==3)  ){//DNA
+
+			//if switch is false, this is activated on line number 3 (DNA second indiv)
+			//if switch is true, this is activated on line number 1 (DNA first indiv)
 
 			header += str;
 
 			//now output fastq entry
 			of 	<< "@" << header << endl <<
-				dna << endl <<
-				"+" << endl <<
-				string(dna.length(),'I') << endl;
+			dna << endl <<
+			"+" << endl <<
+			string(dna.length(),'I') << endl;
+
+
 
 		}
 
