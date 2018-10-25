@@ -20,10 +20,10 @@ int k_left = 0;//extract k_left nucleotides from left of suffix array range, for
 int k_right_def = 30;//extract k_right nucleotides from right of suffix array range, only for entry with max LCP
 int k_right = 0;//extract k_right nucleotides from right of suffix array range, for each entry in the cluster
 
-double pval_def = 0.97; //choose cluster length so that this fraction of bases are captured (the others are discarded because inside a too small/big cluster)
+double pval_def = 0.99; //choose cluster length so that this fraction of bases are captured (the others are discarded because inside a too small/big cluster)
 double pval = 0;
 
-int max_snvs_def = 2;//maximum number of SNVs allowed in left contexts (excluded main SNV).
+int max_snvs_def = 3;//maximum number of SNVs allowed in left contexts (excluded main SNV).
 int max_snvs = 0;//maximum number of SNVs allowed in left contexts
 
 int mcov_out_def = 5;//minimum coverage required in the output events
