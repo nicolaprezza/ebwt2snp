@@ -246,6 +246,13 @@ int main(int argc, char** argv){
 					n_snps++;
 
 					//insert forward call
+
+					if(pos >= ref[chr].size()){
+
+						cout << "WARNING: position " << pos << " larger than chromosome " << chr << "'s length " << ref[chr].size() << endl;
+
+					}
+
 					if(pos >= rlength && pos+rlength < ref[chr].size()){
 
 						assert(pos+1<ref[chr].size());
@@ -273,6 +280,10 @@ int main(int argc, char** argv){
 
 					++ID;
 
+				}else{
+
+					cout << "WARNING: chromosome " << chr << " not found. " << endl;
+
 				}
 
 			}
@@ -281,7 +292,14 @@ int main(int argc, char** argv){
 
 	}
 
-	for(int i=2;i<calls_vcf.size()-2;++i){
+
+	if(calls_vcf.size()==0){
+
+		cout << "WARNING: no variants found. Check that chromosome names are the same in the fasta and vcf files. " << endl;
+
+	}
+
+	for(int i=2;calls_vcf.size() > 1 && i<calls_vcf.size()-2;++i){
 
 		if(i%2==0){
 
