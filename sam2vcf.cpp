@@ -317,8 +317,8 @@ int main(int argc, char** argv){
 					v = {
 									chr,
 									pos + snp_pos,
-									REF_dna.substr(snp_pos,1),
-									ALT_dna.substr(snp_pos,1),
+									REF,
+									ALT,
 									false,
 									exact,
 									COV_REF,
@@ -415,8 +415,8 @@ int main(int argc, char** argv){
 										vcf_entry v  = {
 															chr,
 															pos + i,
-															REF_dna.substr(i,1),
-															ALT_dna.substr(i,1),
+															REF,
+															ALT,
 															false,
 															exact,
 															COV_REF,
@@ -442,8 +442,8 @@ int main(int argc, char** argv){
 										vcf_entry v  = {
 															chr,
 															pos + i,
-															REF_dna.substr(i,1),
-															ALT_dna.substr(i,1),
+															REF,
+															ALT,
 															false,
 															exact,
 															COV_REF,
