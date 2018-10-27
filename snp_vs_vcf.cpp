@@ -218,16 +218,11 @@ int main(int argc, char** argv){
 	vector<call> calls_vcf;
 	uint64_t ID = 0;
 
-	/*
-	 * positions of neighbour SNPs
-	 */
-	vector<int> ctx_snps = vector<int>(3,0);
-
 	while(not vcf_file.eof()){
 
 		getline(vcf_file, line);
 
-		if(line[0] != '#'){
+		if(line.size()>0 and line[0] != '#'){
 
 			std::istringstream is( line );
 
@@ -253,8 +248,17 @@ int main(int argc, char** argv){
 					//insert forward call
 					if(pos >= rlength && pos+rlength < ref[chr].size()){
 
+						assert(pos+1<ref[chr].size());
+						assert(pos+1+rlength<=ref[chr].size());
+						assert(pos>=rlength);
+						assert(pos-rlength<ref[chr].size());
+						assert(pos<=ref[chr].size());
+
 						string right_context = ref[chr].substr(pos+1,rlength);
 						string left_context = REV(ref[chr].substr(pos-rlength,rlength));
+
+						assert(REF.size()>0);
+						assert(ALT.size()>0);
 
 						calls_vcf.push_back(call {right_context, left_context, REF[0], ALT[0], ID, true, pos});
 
