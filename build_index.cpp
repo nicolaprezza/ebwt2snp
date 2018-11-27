@@ -27,17 +27,25 @@ int main(int argc, char** argv){
 	if(argc!=2) help();
 
 	string input_bwt = argv[1];
-	string output_index = input_bwt;
-	input_bwt = input_bwt.substr(0,input_bwt.rfind(".bwt"));
-	input_bwt.append(".rlbwt");
+	string output_index = input_bwt.substr(0,input_bwt.rfind(".bwt"));
+	output_index.append(".rlbwt");
+
+	cout << "Input bwt file: " << input_bwt << endl;
+	cout << "Output index file: " << output_index << endl;
 
 	ifstream is(input_bwt);
 
+	cout << "loading input ... " << flush;
 	std::string bwt((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
+	cout << "done." << endl;
 
+	cout << "Indexing BWT ... " << flush;
 	rle_string_sd rlbwt(bwt);
+	cout << "done." << endl;
 
+	cout << "Storing index to file ... " << flush;
 	rlbwt.save_to_file(output_index);
+	cout << "done." << endl;
 
 }
 
