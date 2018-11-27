@@ -8,8 +8,10 @@
 #include <vector>
 #include "include.hpp"
 #include <unistd.h>
+#include "delta_file.hpp"
 
 using namespace std;
+//using namespace sdsl;
 
 /*
  * parameters
@@ -28,8 +30,12 @@ int lcp = 0;
 int da = 0;
 int pos = 0;
 
+bool delta = false;
 
 int min_len=0;
+
+delta_file * df = NULL;
+ofstream * out = NULL;
 
 void help(){
 
@@ -39,6 +45,7 @@ void help(){
 	"-i <arg>   Input fasta file (REQUIRED)" << endl <<
 	"-k <arg>   Minimum LCP required in clusters (default: " << K_def << ")" << endl <<
 	"-m <arg>   Discard clusters smaller than this value (default: " << min_def << ")" << endl <<
+	"-d         Compress output. Generates file input.clusters.delta (default: do not compress)." << endl <<
 	"-x <arg>   Byte size of LCP integers in input EGSA/BCR file (default: " << lcp_def <<  ")." << endl <<
 	"-y <arg>   Byte size of DA integers (read number) in input EGSA/BCR file (default: " << da_def <<  ")." << endl <<
 	"-z <arg>   Byte size of pos integers (position in read) in input EGSA/BCR file (default: " << pos_def <<  ")." << endl << endl <<
@@ -51,12 +58,24 @@ void help(){
 	 exit(0);
 }
 
-void append_entry(ofstream & out, uint64_t start, uint16_t length){
+void append_entry(uint64_t start, uint16_t length){
 
 	if(length >=min_len){
 
-		out.write((char*)&start, sizeof(uint64_t));
-		out.write((char*)&length, sizeof(uint16_t));
+		if(delta){
+
+			//if delta-compressed, we store start (inclusive) and end position (exclusive), since integers will be delta compressed anyways.
+			df->push_back(start);
+			df->push_back(start+length);
+
+		}else{
+
+			out->write((char*)&start, sizeof(uint64_t));
+			out->write((char*)&length, sizeof(uint16_t));
+
+		}
+
+
 
 	}
 
@@ -65,7 +84,7 @@ void append_entry(ofstream & out, uint64_t start, uint16_t length){
 /*
  * clusters = regions between local LCP minima (excluding tails where LCP < k)
  */
-void cluster_lm(egsa_stream & EGSA,ofstream & out){
+void cluster_lm(egsa_stream & EGSA){
 
 	uint64_t null = ~uint64_t(0);
 
@@ -102,7 +121,7 @@ void cluster_lm(egsa_stream & EGSA,ofstream & out){
 					){
 
 			uint16_t length = (i - start) + 1; //this cluster ends in e2
-			append_entry(out, start, length);
+			append_entry(start, length);
 			n_clust_out++;
 
 			start = null;
@@ -127,7 +146,7 @@ void cluster_lm(egsa_stream & EGSA,ofstream & out){
 	if(start != null){
 
 		uint16_t length = (i - start) + 1; //this cluster ends in e2
-		append_entry(out, start, length);
+		append_entry(start, length);
 		n_clust_out++;
 
 		start = null;
@@ -143,13 +162,16 @@ int main(int argc, char** argv){
 	if(argc < 2) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hk:i:m:x:y:z:")) != -1){
+	while ((opt = getopt(argc, argv, "dhk:i:m:x:y:z:")) != -1){
 		switch (opt){
 			case 'h':
 				help();
 			break;
 			case 'k':
 				k = atoi(optarg);
+			break;
+			case 'd':
+				delta = true;
 			break;
 			case 'm':
 				min_len = atoi(optarg);
@@ -186,13 +208,37 @@ int main(int argc, char** argv){
 
 	cout << "This is ebwt2clust. Input file: " << input << endl;
 
+	if(delta){
+		cout << "Delta-compressing integers." << endl;
+
+	}
+
 	string filename_out = input;
 	filename_out.append(".clusters");
-	ofstream out;
-	out.open(filename_out, ios::out | ios::binary);
 
-	cluster_lm(EGSA,out);
+	if(delta){
 
-	out.close();
+		filename_out.append(".delta");
+
+		df = new delta_file(filename_out,true);
+
+	}else{
+
+		out = new ofstream;
+		out->open(filename_out, ios::out | ios::binary);
+
+	}
+
+	cluster_lm(EGSA);
+
+	if(delta){
+
+		delete df;
+
+	}else{
+
+		delete out;
+
+	}
 
 }

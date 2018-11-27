@@ -1,4 +1,8 @@
+#ifndef INCLUDE_HPP_
+#define INCLUDE_HPP_
+
 #include <fstream>
+#include <vector>
 
 using namespace std;
 
@@ -11,6 +15,7 @@ typedef uint32_t dataTypeNSeq;	//number of sequences
 typedef __int128 uint128_t;
 
 typedef pair<uint64_t,uint32_t> coordinate;//suffix array coordinate (text, suff)
+typedef pair<uint64_t,uint64_t> range_t;
 
 
 
@@ -369,4 +374,6 @@ private:
 	vector<vector<int>> counts;//base counts
 
 };
+
+#endif /* INCLUDE_HPP_ */
 
