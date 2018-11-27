@@ -70,7 +70,9 @@ public:
 			BWT.open(BWT_path, ios::in | ios::binary);
 			GSA.open(GSA_path, ios::in | ios::binary);
 
-			if(LCP.is_open() and BWT.is_open() and GSA.is_open()){
+			//note: we require LCP and BWT to exist. Missing GSA files
+			//will generate 0-fields in the returned elements
+			if(LCP.is_open() and BWT.is_open()){
 
 				bcr = true;
 
@@ -161,21 +163,31 @@ public:
 
 		}else if(bcr){
 
-			switch(suff_size){
 
-				case 1 : uint8_t x8; GSA.read((char*)&x8, 1); e.suff = x8;  break;
-				case 2 : uint16_t x16; GSA.read((char*)&x16, 2); e.suff = x16; break;
-				case 4 : uint32_t x32; GSA.read((char*)&x32, 4); e.suff = x32; break;
-				case 8 : uint64_t x64; GSA.read((char*)&x64, 8); e.suff = x64; break;
+			if(GSA.is_open()){
 
-			}
+				switch(suff_size){
 
-			switch(da_size){
+					case 1 : uint8_t x8; GSA.read((char*)&x8, 1); e.suff = x8;  break;
+					case 2 : uint16_t x16; GSA.read((char*)&x16, 2); e.suff = x16; break;
+					case 4 : uint32_t x32; GSA.read((char*)&x32, 4); e.suff = x32; break;
+					case 8 : uint64_t x64; GSA.read((char*)&x64, 8); e.suff = x64; break;
 
-				case 1 : uint8_t x8; GSA.read((char*)&x8, 1); e.text = x8;  break;
-				case 2 : uint16_t x16; GSA.read((char*)&x16, 2); e.text = x16; break;
-				case 4 : uint32_t x32; GSA.read((char*)&x32, 4); e.text = x32; break;
-				case 8 : uint64_t x64; GSA.read((char*)&x64, 8); e.text = x64; break;
+				}
+
+				switch(da_size){
+
+					case 1 : uint8_t x8; GSA.read((char*)&x8, 1); e.text = x8;  break;
+					case 2 : uint16_t x16; GSA.read((char*)&x16, 2); e.text = x16; break;
+					case 4 : uint32_t x32; GSA.read((char*)&x32, 4); e.text = x32; break;
+					case 8 : uint64_t x64; GSA.read((char*)&x64, 8); e.text = x64; break;
+
+				}
+
+			}else{
+
+				e.suff = 0;
+				e.text = 0;
 
 			}
 
@@ -222,35 +234,6 @@ private:
 	ifstream GSA;//pairs
 
 };
-
-t_GSA read_el(ifstream & egsa, bool bcr){
-
-	t_GSA e;
-
-	if(bcr){
-
-        dataTypeNSeq txt;
-        uint8_t suf;
-        uint8_t lcp;
-
-        egsa.read((char*)&txt, sizeof(dataTypeNSeq));
-        egsa.read((char*)&suf, sizeof(dataTypelenSeq));
-        egsa.read((char*)&lcp, sizeof(dataTypelenSeq));
-        egsa.read((char*)&e.bwt, sizeof(uint8_t));
-
-        e.suff = suf;
-        e.text = txt;
-        e.lcp = lcp;
-
-	}else{
-
-		egsa.read((char*)&e, sizeof(int_text)+sizeof(int_suff)+sizeof(int_lcp)+sizeof(int8));
-
-	}
-
-	return e;
-
-}
 
 unsigned char int_to_base(int i){
 
