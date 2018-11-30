@@ -43,6 +43,9 @@ int main(int argc, char** argv){
 	rle_string_sd rlbwt(bwt);
 	cout << "done." << endl;
 
+	cout << "The BWT has " << rlbwt.size() << " characters." << endl;
+	cout << "The BWT has " << rlbwt.number_of_runs() << " equal-letter runs." << endl;
+
 	cout << "Storing index to file ... " << flush;
 	rlbwt.save_to_file(output_index);
 	cout << "done." << endl;

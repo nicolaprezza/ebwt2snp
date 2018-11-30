@@ -13,9 +13,6 @@
 using namespace std;
 using namespace sdsl;
 
-#ifndef uint64_t
-#endif
-
 class sparse_sd_vector{
 
 public:
