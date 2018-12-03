@@ -46,9 +46,6 @@ public:
 
 		uint64_t block_idx = 0;
 
-		//more efficient for small strings
-		if(nblocks==1) block_size = n;
-
 		cout << "2" << endl;
 
 		for(uint64_t bl = 0;bl<nblocks;++bl) {
@@ -136,7 +133,11 @@ public:
 
 		for(uint64_t i=0;i<nblocks;++i){
 
-			w_bytes += blocks[i].serialize(out);
+			uint64_t x = blocks[i].serialize(out);
+
+			cout << "Saved " << x << " bytes of rle_string" << endl;
+
+			w_bytes += x;
 
 		}
 
