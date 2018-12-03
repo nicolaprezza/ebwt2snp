@@ -172,7 +172,7 @@ public:
 	}
 
 	/*
-	 * number of c before position i
+	 * number of c before position i excluded
 	 */
 	uint64_t rank(uint64_t i, uint8_t c){
 

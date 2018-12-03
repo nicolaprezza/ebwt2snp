@@ -8,7 +8,7 @@
 
 #include <iostream>
 #include <fstream>
-#include "internal/rle_string.hpp"
+#include "internal/rlbwt.hpp"
 
 using namespace std;
 
@@ -33,21 +33,15 @@ int main(int argc, char** argv){
 	cout << "Input bwt file: " << input_bwt << endl;
 	cout << "Output index file: " << output_index << endl;
 
-	ifstream is(input_bwt);
-
-	cout << "loading input ... " << flush;
-	std::string bwt((std::istreambuf_iterator<char>(is)), std::istreambuf_iterator<char>());
-	cout << "done." << endl;
-
 	cout << "Indexing BWT ... " << flush;
-	rle_string_sd rlbwt(bwt);
+	rlbwt BWT(input_bwt);
 	cout << "done." << endl;
 
-	cout << "The BWT has " << rlbwt.size() << " characters." << endl;
-	cout << "The BWT has " << rlbwt.number_of_runs() << " equal-letter runs." << endl;
+	cout << "The BWT has " << BWT.size() << " characters." << endl;
+	//cout << "The BWT has " << BWT.number_of_runs() << " equal-letter runs." << endl;
 
 	cout << "Storing index to file ... " << flush;
-	rlbwt.save_to_file(output_index);
+	BWT.save_to_file(output_index);
 	cout << "done." << endl;
 
 }

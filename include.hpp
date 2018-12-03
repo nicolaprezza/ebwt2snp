@@ -31,6 +31,11 @@ typedef struct{
 
 } t_GSA;
 
+std::ifstream::pos_type filesize(string filename){
+    std::ifstream in(filename.c_str(), std::ifstream::ate | std::ifstream::binary);
+    return in.tellg();
+}
+
 /*
  * this class abstracts the EGSA type and allows reading from different formats (EGSA/BCR)
  */
@@ -243,6 +248,7 @@ unsigned char int_to_base(int i){
 		case 1: return 'C'; break;
 		case 2: return 'G'; break;
 		case 3: return 'T'; break;
+		case 4: return '$'; break;
 
 	}
 
@@ -258,6 +264,7 @@ int base_to_int(unsigned char c){
 		case 'C': case 'c': return 1; break;
 		case 'G': case 'g': return 2; break;
 		case 'T': case 't': return 3; break;
+		case '$': return 4; break;
 		case 'N': case 'n': return rand()%4; break;
 
 	}
@@ -274,6 +281,7 @@ unsigned char RC(unsigned char c){
 		case 'C': case 'c': return 'G'; break;
 		case 'G': case 'g': return 'C'; break;
 		case 'T': case 't': return 'A'; break;
+		case '$': return '$'; break;
 		default: break;
 
 	}
