@@ -31,22 +31,14 @@ public:
 		bsize = block_size;
 		n = uint64_t(filesize(path));
 
-		cout << "file len = " << n << endl;
-
 		nblocks = (n/block_size) + ((n%block_size)!=0);
-
-		cout << "nblocks = " << nblocks << endl;
 
 		partial_rank = vector<vector<uint64_t> >(5, vector<uint64_t>(nblocks,0));
 		blocks = vector<rle_string<> >(nblocks);
 
-		cout << "1" << endl;
-
 		ifstream input(path);
 
 		uint64_t block_idx = 0;
-
-		cout << "2" << endl;
 
 		for(uint64_t bl = 0;bl<nblocks;++bl) {
 
@@ -54,15 +46,9 @@ public:
 
 			input.read((char*)buffer.data(), buffer.size());
 
-			cout << "3" << endl;
-
 			blocks[block_idx++] = rle_string<>(buffer);
 
-			cout << "5" << endl;
-
 		}
-
-		cout << "6" << endl;
 
 		for(uint8_t c = 0;c<5;++c){
 
@@ -73,9 +59,6 @@ public:
 			}
 
 		}
-
-		cout << "7" << endl;
-
 
 	}
 
@@ -134,8 +117,6 @@ public:
 		for(uint64_t i=0;i<nblocks;++i){
 
 			uint64_t x = blocks[i].serialize(out);
-
-			cout << "Saved " << x << " bytes of rle_string" << endl;
 
 			w_bytes += x;
 
