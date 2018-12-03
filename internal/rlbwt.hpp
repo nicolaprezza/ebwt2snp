@@ -31,10 +31,16 @@ public:
 		bsize = block_size;
 		n = uint64_t(filesize(path));
 
-		nblocks = (n/block_size) + (n%block_size!=0);
+		cout << "file len = " << n << endl;
+
+		nblocks = (n/block_size) + ((n%block_size)!=0);
+
+		cout << "nblocks = " << nblocks << endl;
 
 		partial_rank = vector<vector<uint64_t> >(5, vector<uint64_t>(nblocks,0));
 		blocks = vector<rle_string<> >(nblocks);
+
+		cout << "1" << endl;
 
 		ifstream input(path);
 
@@ -45,27 +51,40 @@ public:
 
 		string buffer (block_size,0); //init buffer
 
+		cout << "2" << endl;
+
 		while (!input.eof()) {
 			input.read((char*)buffer.data(), buffer.size());
 			std::streamsize dataSize = input.gcount();
+
+			cout << "3" << endl;
 
 			//last partial chunk
 			if(dataSize < buffer.size())
 				buffer.resize(dataSize);
 
+			cout << "4" << endl;
+
 			blocks[block_idx++] = rle_string<>(buffer);
+
+			cout << "5" << endl;
 
 		}
 
-		for(uint64_t i=1;i<nblocks;++i){
+		cout << "6" << endl;
 
-			for(uint8_t c = 0;c<5;++c){
+		for(uint8_t c = 0;c<5;++c){
+
+			for(uint64_t i=1;i<nblocks;++i){
 
 				partial_rank[c][i] = partial_rank[c][i-1] + blocks[i-1].rank(blocks[i-1].size(), int_to_base(c));
 
 			}
 
 		}
+
+		cout << "7" << endl;
+
 
 	}
 
