@@ -49,21 +49,15 @@ public:
 		//more efficient for small strings
 		if(nblocks==1) block_size = n;
 
-		string buffer (block_size,0); //init buffer
-
 		cout << "2" << endl;
 
-		while (!input.eof()) {
+		for(uint64_t bl = 0;bl<nblocks;++bl) {
+
+			string buffer (bl == nblocks-1 ? n%block_size : block_size,0); //init buffer
+
 			input.read((char*)buffer.data(), buffer.size());
-			std::streamsize dataSize = input.gcount();
 
 			cout << "3" << endl;
-
-			//last partial chunk
-			if(dataSize < buffer.size())
-				buffer.resize(dataSize);
-
-			cout << "4" << endl;
 
 			blocks[block_idx++] = rle_string<>(buffer);
 
