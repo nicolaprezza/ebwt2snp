@@ -39,7 +39,6 @@ int main(int argc, char** argv){
 	cout << "done." << endl;
 
 	cout << "The BWT has " << BWT.size() << " characters." << endl;
-	//cout << "The BWT has " << BWT.number_of_runs() << " equal-letter runs." << endl;
 
 	cout << "Storing index to file ... " << flush;
 	BWT.save_to_file(output_index);
