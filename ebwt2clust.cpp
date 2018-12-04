@@ -75,8 +75,6 @@ void append_entry(uint64_t start, uint16_t length){
 
 		}
 
-
-
 	}
 
 }

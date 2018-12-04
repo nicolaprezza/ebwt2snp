@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include "internal/rlbwt.hpp"
+#include "internal/wt_bwt.hpp"
 
 using namespace std;
 
@@ -34,7 +35,7 @@ int main(int argc, char** argv){
 	cout << "Output index file: " << output_index << endl;
 
 	cout << "Indexing BWT ... " << flush;
-	rlbwt BWT(input_bwt);
+	wt_bwt BWT(input_bwt);
 	cout << "done." << endl;
 
 	cout << "The BWT has " << BWT.size() << " characters." << endl;

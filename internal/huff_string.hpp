@@ -79,7 +79,7 @@ private:
 
 	//wt_gmr<> wt;
 
-	wt_huff<> wt;
+	wt_huff<rrr_vector<> > wt;
 
 };
 
