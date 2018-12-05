@@ -15,6 +15,7 @@
 using namespace sdsl;
 using namespace std;
 
+template<class bitvector_type>
 class huff_string{
 
 public:
@@ -80,8 +81,11 @@ private:
 	//wt_gmr<> wt;
 
 	//wt_huff<rrr_vector<> > wt;
-	wt_huff<> wt;
+	wt_huff<bitvector_type> wt;
 
 };
+
+typedef huff_string<rrr_vector<> > rrr_str;
+typedef huff_string<bit_vector> suc_str;
 
 #endif /* HUFF_STRING_HPP_ */

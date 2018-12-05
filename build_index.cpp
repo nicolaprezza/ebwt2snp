@@ -8,41 +8,113 @@
 
 #include <iostream>
 #include <fstream>
-#include "internal/rlbwt.hpp"
-#include "internal/wt_bwt.hpp"
+#include "internal/bwt.hpp"
 
 using namespace std;
 
+string input_file;
+string output_file;
+bool convert_n = true;
+bool rle = false;
+bool suc = true;
+bool rrr = false;
+
 void help(){
 
-	cout << "build_index input.bwt" << endl << endl <<
-	"Builds a run-length string with rank/select support on the input BWT." << endl <<
-	"Assumption: string terminators are all stored as '$'. Output is stored in input.rlbwt" << endl;
-
+	cout << "build_index [options]" << endl <<
+	"Options:" << endl <<
+	"-h          Print this help" << endl <<
+	"-i <arg>    Input BWT file (REQUIRED)" << endl <<
+	"-o <arg>    Output index file (REQUIRED)" << endl <<
+	"-n          Do not convert N's to random bases (DEFAULT: N's are converted)" << endl <<
+	"-r          Run-length compressed BWT" << endl <<
+	"-s          Huffman + succinct bitvectors (DEFAULT)" << endl <<
+	"-e          Huffman + entropy-compressed bitvectors (RRR)" << endl << endl <<
+ 	"Note: string terminators must be stored as '$'." << endl;
 	exit(0);
 }
 
-
 int main(int argc, char** argv){
 
-	if(argc!=2) help();
+	if(argc < 3) help();
 
-	string input_bwt = argv[1];
-	string output_index = input_bwt.substr(0,input_bwt.rfind(".bwt"));
-	output_index.append(".rlbwt");
+	int opt;
+	while ((opt = getopt(argc, argv, "hi:o:nrse")) != -1){
+		switch (opt){
+			case 'h':
+				help();
+			break;
+			case 'i':
+				input_file = string(optarg);
+			break;
+			case 'o':
+				output_file = string(optarg);
+			break;
+			case 'n':
+				convert_n = false;
+			break;
+			case 'r':
+				rle=true;suc=false;rrr=false;
+			break;
+			case 's':
+				rle=false;suc=true;rrr=false;
+			break;
+			case 'e':
+				rle=false;suc=false;rrr=true;
+			break;
+			default:
+				help();
+			return -1;
+		}
+	}
 
-	cout << "Input bwt file: " << input_bwt << endl;
-	cout << "Output index file: " << output_index << endl;
+	if(input_file.size()==0) help();
+	if(output_file.size()==0) help();
 
-	cout << "Indexing BWT ... " << flush;
-	wt_bwt BWT(input_bwt);
-	cout << "done." << endl;
+	srand(time(NULL));
 
-	cout << "The BWT has " << BWT.size() << " characters." << endl;
+	cout << "Input bwt file: " << input_file << endl;
+	cout << "Output index file: " << output_file << endl;
 
-	cout << "Storing index to file ... " << flush;
-	BWT.save_to_file(output_index);
-	cout << "done." << endl;
+	if(rle){
+
+		cout << "Building run-length compressed BWT" << endl;
+		auto BWT = rle_bwt(input_file,convert_n);
+
+		std::ofstream out(output_file);
+		uint8_t type = 'r';
+		out.write((char*)&type,sizeof(type));
+		BWT.serialize(out);
+		out.close();
+
+	}
+
+	if(suc){
+
+		cout << "Building succinct+Huffman compressed BWT" << endl;
+		auto BWT = suc_bwt(input_file,convert_n);
+
+		std::ofstream out(output_file);
+		uint8_t type = 's';
+		out.write((char*)&type,sizeof(type));
+		BWT.serialize(out);
+		out.close();
+
+	}
+
+	if(rrr){
+
+		cout << "Building RRR+Huffman compressed BWT" << endl;
+		auto BWT = rrr_bwt(input_file,convert_n);
+
+		std::ofstream out(output_file);
+		uint8_t type = 'e';
+		out.write((char*)&type,sizeof(type));
+		BWT.serialize(out);
+		out.close();
+
+	}
+
 
 }
 

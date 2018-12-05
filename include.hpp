@@ -265,7 +265,7 @@ int base_to_int(unsigned char c){
 		case 'G': case 'g': return 2; break;
 		case 'T': case 't': return 3; break;
 		case '$': return 4; break;
-		case 'N': case 'n': return rand()%4; break;
+		default: return rand()%4; break;
 
 	}
 

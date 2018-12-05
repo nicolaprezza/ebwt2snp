@@ -1,23 +1,24 @@
 /*
- * wt_bwt.hpp
+ * bwt.hpp
  *
  *  Created on: Dec 3, 2018
  *      Author: nico
  *
- *  Huffman Wavelet tree + RRR BWT for large files.
+ *  BWT for big files: built in chunks. The class is a template on the string type (could be run-length, Huffman...)
  *
  */
 
 #include "include.hpp"
 #include "rle_string.hpp"
-#include "sdsl/wavelet_trees.hpp"
+#include "huff_string.hpp"
 
-#ifndef INTERNAL_WT_BWT_HPP_
-#define INTERNAL_WT_BWT_HPP_
+#ifndef INTERNAL_BWT_HPP_
+#define INTERNAL_BWT_HPP_
 
 using namespace sdsl;
 
-class wt_bwt{
+template<class str_type = rrr_str>
+class bwt{
 
 public:
 
@@ -29,7 +30,7 @@ public:
 	 * Default block size: 2^29, i.e. approx. 537 MB
 	 *
 	 */
-	wt_bwt(string path, uint64_t block_size = (uint64_t(1)<<29) ){
+	bwt(string path, bool random_n = true, uint64_t block_size = (uint64_t(1)<<29) ){
 
 		bsize = block_size;
 		n = uint64_t(filesize(path));
@@ -37,7 +38,7 @@ public:
 		nblocks = (n/block_size) + ((n%block_size)!=0);
 
 		partial_rank = vector<vector<uint64_t> >(5, vector<uint64_t>(nblocks,0));
-		blocks = vector<huff_string>(nblocks);
+		blocks = vector<str_type>(nblocks);
 
 		ifstream input(path);
 
@@ -49,7 +50,9 @@ public:
 
 			input.read((char*)buffer.data(), buffer.size());
 
-			blocks[block_idx++] = huff_string(buffer);
+			convert(buffer, random_n);
+
+			blocks[block_idx++] = str_type(buffer);
 
 		}
 
@@ -149,7 +152,7 @@ public:
 
 		if(n==0) return;
 
-		blocks = vector<huff_string>(nblocks);
+		blocks = vector<str_type>(nblocks);
 		partial_rank = vector<vector<uint64_t> >(5, vector<uint64_t>(nblocks,0));
 
 		for(uint64_t i=0;i<nblocks;++i){
@@ -186,8 +189,15 @@ public:
 
 private:
 
+	void convert(string & s, bool random_n){
+
+		for(uint64_t i=0;i<s.size();++i)
+			s[i] = (not random_n) and (s[i]=='N' or s[i]=='n') ? 'N' : int_to_base(base_to_int(s[i]));
+
+	}
+
 	uint64_t n = 0;//BWT length
-	vector<huff_string> blocks;
+	vector<str_type> blocks;
 
 	//partial rank info for each block and character
 	vector<vector<uint64_t> > partial_rank;
@@ -197,4 +207,8 @@ private:
 
 };
 
-#endif /* INTERNAL_WT_BWT_HPP_ */
+typedef bwt<rle_str> rle_bwt;
+typedef bwt<suc_str> suc_bwt;
+typedef bwt<rrr_str> rrr_bwt;
+
+#endif /* INTERNAL_BWT_HPP_ */

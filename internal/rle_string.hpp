@@ -29,7 +29,7 @@
 
 template<
 	class sparse_bitvector_t = sparse_sd_vector, 	//predecessor structure storing run length
-	class string_t	= huff_string 					//run heads
+	class string_t	= suc_str	 					//run heads
 >
 class rle_string{
 
@@ -671,6 +671,6 @@ private:
 
 };
 
-typedef rle_string<sparse_sd_vector> rle_string_sd;
+typedef rle_string<sparse_sd_vector> rle_str;
 
 #endif /* RLE_STRING_HPP_ */
