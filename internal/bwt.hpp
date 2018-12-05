@@ -86,34 +86,31 @@ public:
 	 */
 	range_t full_range(){
 
-		//inclusive range
-		return {0,size()-1};
+		//right-exclusive range
+		return {0,size()};
 
 	}
 
 	/*
-	 * \param r inclusive range of a string w
+	 * \param r right-exclusive range of a string w
 	 * \param c character
-	 * \return inclusive range of cw
+	 * \return right-exclusive range of cw
 	 */
 	range_t LF(range_t rn, uint8_t c){
 
 		//if character does not appear in the text, return empty pair
-		if((c==255 and F[c]==size()) || F[c]>=F[c+1])
-			return {1,0};
+		//if((c==255 and F[c]==size()) || F[c]>=F[c+1])
+			//return {1,0};
 
 		//number of c before the interval
 		uint64_t c_before = rank(rn.first,c);
 
 		//number of c inside the interval rn
-		uint64_t c_inside = rank(rn.second+1,c) - c_before;
-
-		//if there are no c in the interval, return empty range
-		if(c_inside==0) return {1,0};
+		uint64_t c_inside = rank(rn.second,c) - c_before;
 
 		uint64_t l = F[c] + c_before;
 
-		return {l,l+c_inside-1};
+		return {l,l+c_inside};
 
 	}
 
@@ -169,17 +166,7 @@ public:
 	 */
 	range_t get_char_range(uint8_t c){
 
-		//if character does not appear in the text, return empty pair
-		if((c==255 and F[c]==size()) || F[c]>=F[c+1])
-			return {1,0};
-
-		uint64_t l = F[c];
-		uint64_t r = size()-1;
-
-		if(c<255)
-			r = F[c+1]-1;
-
-		return {l,r};
+		return {F[c], F[c+1]};
 
 	}
 
@@ -191,7 +178,7 @@ public:
 		auto range = full_range();
 		uint64_t m = P.size();
 
-		for(uint64_t i=0;i<m and range.second>=range.first;++i)
+		for(uint64_t i=0;i<m and range.second>range.first;++i)
 			range = LF(range,P[m-i-1]);
 
 		return range;
@@ -340,29 +327,58 @@ public:
 
 	sa_node root(){
 
+		uint8_t flag = 0;
+
+		return {
+			F['$'],
+			F['A'],
+			F['C'],
+			F['G'],
+			F['T'],
+			F['T'+1],
+			0,
+			0
+		};
+
 	}
 
 	sa_leaf first_leaf(){
 
+		return {{F['$'], F[uint8_t('$')+1]}, 1};
+
 	}
 
 	/*
-	 * input: inclusive range on BWT
-	 * output: sorted distinct chars appearing in the range
+	 * input: right-exclusive range on BWT
+	 * output: distinct chars appearing in the range
+	 *
+	 * output is given as a flag using the bitmasks MASK_X for X=A,C,G,T
 	 */
-	vector<uint8_t> range_distinct(range_t r){
+	/*uint8_t range_distinct(range_t r){
 
-		return vector<uint8_t>();
+		return 0;
 
-	}
+	}*/
 
 	/*
-	 * suffix array leaf L representing string W$
-	 * Output: vector of leaves representing strings a_1.W$,...,a_k.W$, where a_1, ..., a_k = range_distinct(range(L))
+	 * Input: suffix array leaf L representing string W$
+	 * Output: vector of 4 leaves representing strings A.W$, C.W$, G.W$, T.W$. Some of these ranges may be empty.
 	 */
 	vector<sa_leaf> next_leaves(sa_leaf L){
 
-		return vector<sa_leaf>();
+		vector<sa_leaf> res(4);
+
+		auto rnA = LF(L.rn, 'A');
+		auto rnC = LF(L.rn, 'C');
+		auto rnG = LF(L.rn, 'G');
+		auto rnT = LF(L.rn, 'T');
+
+		res[0] = {rnA, L.depth+1};
+		res[1] = {rnC, L.depth+1};
+		res[2] = {rnG, L.depth+1};
+		res[3] = {rnT, L.depth+1};
+
+		return res;
 
 	}
 

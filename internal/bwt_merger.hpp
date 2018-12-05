@@ -31,6 +31,7 @@
 
 #include "bwt.hpp"
 #include "sdsl/int_vector.hpp"
+#include <stack>
 
 using namespace std;
 using namespace sdsl;
@@ -60,8 +61,38 @@ public:
 		DA = bit_vector(n);
 
 
+		/*
+		 * FIRST PASS: NAVIGATE LEAVES AND MERGE BWTs
+		 */
+
+		{
+
+			stack<pair<sa_leaf, sa_leaf> > S;
+			S.push({bwt1->first_leaf(), bwt2->first_leaf()});
+
+			while(not S.empty()){
+
+				auto L = S.top();
+				S.pop();
+
+				sa_leaf L1 = L.first;
+				sa_leaf L2 = L.second;
+
+				uint64_t start1 = L1.rn.first + L2.rn.first;//start position of first interval in merged intervals
+				uint64_t start2 = L2.rn.first + L1.rn.second;//start position of second interval in merged intervals
+				uint64_t end = L1.rn.second + L2.rn.second;//end position of merged intervals
+
+				for(uint64_t i = start1; i<start2; ++i) DA[i] = 0;
+				for(uint64_t i = start2; i<end; ++i) DA[i] = 1;
+
+				auto leaves1 = bwt1->next_leaves(L1);
+				auto leaves2 = bwt2->next_leaves(L2);
 
 
+
+			}
+
+		}
 
 		//add rank support to DA for random access to merged BWT
 		rank1 = bit_vector::rank_1_type(&DA);

@@ -366,6 +366,13 @@ private:
 
 };
 
+uint8_t MASK_$ = uint8_t(1);
+uint8_t MASK_A = uint8_t(2);
+uint8_t MASK_C = uint8_t(4);
+uint8_t MASK_G = uint8_t(8);
+uint8_t MASK_T = uint8_t(16);
+
+
 /*
  * representation of a right-maximal substring (SA node) as a list of BWT intervals
  */
@@ -374,14 +381,22 @@ struct sa_node{
 	//right-maximal substring: string W such that Wa_1, ..., Wa_k occur in the text for
 	//at least k>=2 characters a_1, ..., a_k
 
-	//Length k. Characters such that W.chars[i] occurs in text
-	vector<uint8_t> chars;
-
 	//Length k+1. Inclusive bwt range of W.chars[i] is <first[i], first[i+1]-1>
 	//Range of W is <first[0], first[k]-1>
-	vector<uint64_t> first;
+	//Equivalently, number of suffixes smaller than W.chars[i] is first[i]
+	//vector<uint64_t> first;
 
-	uint8_t h;//W[0]. Equal to 0 if W = empty string.
+	uint64_t first_$;
+	uint64_t first_A;
+	uint64_t first_C;
+	uint64_t first_G;
+	uint64_t first_T;
+	uint64_t last;
+
+	//depth = |W|
+	uint64_t depth;
+
+	uint8_t h;//head = first character of suffix = W[0]. Equal to 0 if W = empty string.
 
 };
 
@@ -389,7 +404,21 @@ struct sa_node{
  * suffix array leaf = BWT range (inclusive) of W$, for some string W.
  *
  */
-typedef range_t sa_leaf;
+struct sa_leaf{
+
+	//rn.first = first position of range. Equivalently, number of suffixes smaller than W$ (valid also if W$ does not occur)
+	//rn.second = last position (excluded) of interval.  Equivalently, number of suffixes smaller than W$ + number of occurrences of W$
+	//if last == first, then W$ does not occur (however, 'first' is in any case number of suffixes smaller than W$)
+	range_t rn;
+
+	//depth = |W$|
+	uint64_t depth;
+
+};
+
+uint64_t range_length(range_t r){
+	return (r.second - r.first) - 1;
+}
 
 #endif /* INCLUDE_HPP_ */
 

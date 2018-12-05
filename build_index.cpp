@@ -27,7 +27,7 @@ void help(){
 	"-h          Print this help" << endl <<
 	"-i <arg>    Input BWT file (REQUIRED)" << endl <<
 	"-o <arg>    Output index file (REQUIRED)" << endl <<
-	"-n          Do not convert N's to random bases (DEFAULT: N's are converted)" << endl <<
+	//"-n          Do not convert N's to random bases (DEFAULT: N's are converted)" << endl <<
 	"-r          Run-length compressed BWT" << endl <<
 	"-s          Huffman + succinct bitvectors (DEFAULT)" << endl <<
 	"-e          Huffman + entropy-compressed bitvectors (RRR)" << endl << endl <<
@@ -40,7 +40,7 @@ int main(int argc, char** argv){
 	if(argc < 3) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hi:o:nrse")) != -1){
+	while ((opt = getopt(argc, argv, "hi:o:rse")) != -1){
 		switch (opt){
 			case 'h':
 				help();
