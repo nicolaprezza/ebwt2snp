@@ -333,6 +333,50 @@ public:
 
 	}
 
+
+	/*
+	 * functions for suffix tree navigation
+	 */
+
+	sa_node root(){
+
+	}
+
+	sa_leaf first_leaf(){
+
+	}
+
+	/*
+	 * input: inclusive range on BWT
+	 * output: sorted distinct chars appearing in the range
+	 */
+	vector<uint8_t> range_distinct(range_t r){
+
+		return vector<uint8_t>();
+
+	}
+
+	/*
+	 * suffix array leaf L representing string W$
+	 * Output: vector of leaves representing strings a_1.W$,...,a_k.W$, where a_1, ..., a_k = range_distinct(range(L))
+	 */
+	vector<sa_leaf> next_leaves(sa_leaf L){
+
+		return vector<sa_leaf>();
+
+	}
+
+	/*
+	 * Input: suffix array node N representing right-maximal string W
+	 * Output: vector of sa nodes a_1.W,...,a_k.W (i.e. right-maximal substrings) reached
+	 * following Weiner links from N. Output nodes are sorted by first char, i.e. a_1, ..., a_k.
+	 */
+	vector<sa_node> weiner(sa_node N){
+
+		return vector<sa_node>();
+
+	}
+
 private:
 
 	void count_chars(string & s){

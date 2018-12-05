@@ -35,23 +35,6 @@
 using namespace std;
 using namespace sdsl;
 
-/*
- * representation of a right-maximal substring (SA node) as a list of BWT intervals
- */
-struct sa_node{
-
-	//right-maximal substring: string W such that Wa_1, ..., Wa_k occur in the text for
-	//at least k>=2 characters a_1, ..., a_k
-
-	//Length k. Characters such that W.chars[i] occurs in text
-	vector<uint8_t> chars;
-
-	//Length k+1. Inclusive bwt range of W.chars[i] is <first[i], first[i+1]-1>
-	//Range of W is <first[0], first[k]-1>
-	vector<uint64_t> first;
-
-};
-
 template<class bwt_t, typename lcp_int_t>
 class bwt_merger{
 
