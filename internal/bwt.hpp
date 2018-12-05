@@ -32,6 +32,9 @@ public:
 	 */
 	bwt(string path, bool random_n = true, uint64_t block_size = (uint64_t(1)<<29) ){
 
+		//build F column
+		F = vector<uint64_t>(256,0);
+
 		bsize = block_size;
 		n = uint64_t(filesize(path));
 
@@ -51,10 +54,20 @@ public:
 			input.read((char*)buffer.data(), buffer.size());
 
 			convert(buffer, random_n);
+			count_chars(buffer);
 
 			blocks[block_idx++] = str_type(buffer);
 
 		}
+
+		//build F column
+		for(uint64_t i=255;i>0;--i)
+			F[i] = F[i-1];
+
+		F[0] = 0;
+
+		for(uint64_t i=1;i<256;++i)
+			F[i] += F[i-1];
 
 		for(uint8_t c = 0;c<5;++c){
 
@@ -67,6 +80,135 @@ public:
 		}
 
 	}
+
+	/*
+	 * get full BWT range
+	 */
+	range_t full_range(){
+
+		//inclusive range
+		return {0,size()-1};
+
+	}
+
+	/*
+	 * \param r inclusive range of a string w
+	 * \param c character
+	 * \return inclusive range of cw
+	 */
+	range_t LF(range_t rn, uint8_t c){
+
+		//if character does not appear in the text, return empty pair
+		if((c==255 and F[c]==size()) || F[c]>=F[c+1])
+			return {1,0};
+
+		//number of c before the interval
+		uint64_t c_before = rank(rn.first,c);
+
+		//number of c inside the interval rn
+		uint64_t c_inside = rank(rn.second+1,c) - c_before;
+
+		//if there are no c in the interval, return empty range
+		if(c_inside==0) return {1,0};
+
+		uint64_t l = F[c] + c_before;
+
+		return {l,l+c_inside-1};
+
+	}
+
+	//backward navigation of the BWT
+	uint64_t LF(uint64_t  i){
+
+		auto c = operator[](i);
+		return F[c] + rank(i,c);
+
+	}
+
+	//forward navigation of the BWT
+	uint64_t FL(uint64_t  i){
+
+		//i-th character in first BWT column
+		auto c = F_at(i);
+
+		//this c is the j-th (counting from 0)
+		uint64_t j = i - F[c];
+
+		return select(j,uint8_t(c));
+
+	}
+
+	//forward navigation of the BWT, where for efficiency we give c=F[i] as input
+	uint64_t FL(uint64_t  i, uint8_t c){
+
+		//i-th character in first BWT column
+		assert(c == F_at(i));
+
+		//this c is the j-th (counting from 0)
+		uint64_t j = i - F[c];
+
+		return select(j,uint8_t(c));
+
+	}
+
+	/*
+	 * access column F at position i
+	 */
+	uint8_t F_at(uint64_t i){
+
+		uint64_t c = (upper_bound(F.begin(),F.end(),i) - F.begin()) - 1;
+		assert(c<256);
+		assert(i>=F[c]);
+
+		return uint8_t(c);
+
+	}
+
+	/*
+	 * Return BWT range of character c
+	 */
+	range_t get_char_range(uint8_t c){
+
+		//if character does not appear in the text, return empty pair
+		if((c==255 and F[c]==size()) || F[c]>=F[c+1])
+			return {1,0};
+
+		uint64_t l = F[c];
+		uint64_t r = size()-1;
+
+		if(c<255)
+			r = F[c+1]-1;
+
+		return {l,r};
+
+	}
+
+	/*
+	 * Return BWT range of pattern P
+	 */
+	range_t count(string &P){
+
+		auto range = full_range();
+		uint64_t m = P.size();
+
+		for(uint64_t i=0;i<m and range.second>=range.first;++i)
+			range = LF(range,P[m-i-1]);
+
+		return range;
+
+	}
+
+	/*
+	 * Return number of occurrences of P in the text
+	 */
+	uint64_t occ(string &P){
+
+		auto rn = count(P);
+
+		return rn.second>=rn.first ? (rn.second-rn.first)+1 : 0;
+
+	}
+
 
 	uint8_t operator[](uint8_t i){
 
@@ -115,6 +257,7 @@ public:
 		out.write((char*)&n,sizeof(n));
 		out.write((char*)&bsize,sizeof(bsize));
 		out.write((char*)&nblocks,sizeof(nblocks));
+		out.write((char*)&F,256*sizeof(uint64_t));
 
 		w_bytes += sizeof(n) + sizeof(bsize) + sizeof(nblocks);
 
@@ -149,6 +292,9 @@ public:
 		in.read((char*)&n,sizeof(n));
 		in.read((char*)&bsize,sizeof(bsize));
 		in.read((char*)&nblocks,sizeof(nblocks));
+
+		F = vector<uint64_t>(256, 0);
+		in.read((char*)&F,256*sizeof(uint64_t));
 
 		if(n==0) return;
 
@@ -189,6 +335,12 @@ public:
 
 private:
 
+	void count_chars(string & s){
+
+		for(auto c:s) F[c]++;
+
+	}
+
 	void convert(string & s, bool random_n){
 
 		for(uint64_t i=0;i<s.size();++i)
@@ -204,6 +356,8 @@ private:
 
 	uint64_t bsize = 0;
 	uint64_t nblocks = 0;
+
+	vector<uint64_t> F;
 
 };
 
