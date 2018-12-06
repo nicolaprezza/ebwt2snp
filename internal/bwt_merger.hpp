@@ -6,7 +6,7 @@
  *
  * Merges two compressed BWTs of length n1 and n2 of two string collections. Always computes the document array DA (n1+n2 bits).
  *
- * Assumption: terminators are all represented with special character '$'
+ * Assumption: terminators are all represented with special character TERM=#
  *
  * If just DA is computed, uses only n1+n2 bits of space on top of the input (compressed) BWTs
  * (plus a small stack of O(sigma*log n) words during merge)
@@ -68,6 +68,10 @@ public:
 		 * FIRST PASS: NAVIGATE LEAVES AND MERGE BWTs (i.e. build DA). If enabled, compute LCP inside leaves.
 		 */
 
+		uint64_t m = 0;//number of entries filled in DA
+		uint64_t nodes = 0;//number of visited nodes
+		uint64_t max_stack = 0;
+
 		{
 
 			stack<pair<sa_leaf, sa_leaf> > S;
@@ -77,6 +81,9 @@ public:
 
 				auto L = S.top();
 				S.pop();
+				nodes++;
+
+				max_stack = S.size() > max_stack ? S.size() : max_stack;
 
 				sa_leaf L1 = L.first;
 				sa_leaf L2 = L.second;
@@ -85,44 +92,56 @@ public:
 				uint64_t start2 = L2.rn.first + L1.rn.second;//start position of second interval in merged intervals
 				uint64_t end = L1.rn.second + L2.rn.second;//end position of merged intervals
 
-				for(uint64_t i = start1; i<start2; ++i) DA[i] = 0;
-				for(uint64_t i = start2; i<end; ++i) DA[i] = 1;
+				assert(leaf_size(L)>0);
+				assert(end>start1);
 
-				auto leaves1 = bwt1->next_leaves(L1);
-				auto leaves2 = bwt2->next_leaves(L2);
+				for(uint64_t i = start1; i<start2; ++i){
+					DA[i] = 0;
+					m++;
+				}
 
-				vector<pair<sa_leaf, sa_leaf> > non_empty_leaves;
+				for(uint64_t i = start2; i<end; ++i){
+					DA[i] = 1;
+					m++;
+				}
 
-				/*
-				 * Keep pair of leaves {l1,l2} such that at least one of the two is non-empty: in the merged BWT,
-				 * these will generate a non-empty leave
-				 */
-				for(int c=0;c<4;++c){
+				assert(m<=n);
+				assert(L1.depth==L2.depth);
 
-					if(leaf_size(leaves1[c])>0 or leaf_size(leaves2[c])>0)
-						non_empty_leaves.push_back({leaves1[c],leaves2[c]});
+				//leaves with extension A
+				sa_leaf l1A = { bwt1->LF(L1.rn,'A'), L1.depth+1 };
+				sa_leaf l2A = { bwt2->LF(L2.rn,'A'), L2.depth+1 };
+				//leaves with extension C
+				sa_leaf l1C = { bwt1->LF(L1.rn,'C'), L1.depth+1 };
+				sa_leaf l2C = { bwt2->LF(L2.rn,'C'), L2.depth+1 };
+				//leaves with extension G
+				sa_leaf l1G = { bwt1->LF(L1.rn,'G'), L1.depth+1 };
+				sa_leaf l2G = { bwt2->LF(L2.rn,'G'), L2.depth+1 };
+				//leaves with extension T
+				sa_leaf l1T;
+				sa_leaf l2T;
 
-					/*
-					 * sort non-empty leaves in ascending order of combined range size.
-					 */
-					std::sort( non_empty_leaves.begin( ), non_empty_leaves.end( ), [ ]( const pair<sa_leaf, sa_leaf>& lhs, const pair<sa_leaf, sa_leaf>& rhs )
-					{
-					   return range_length(lhs.first.rn)+range_length(lhs.second.rn) < range_length(rhs.first.rn)+range_length(rhs.second.rn);
-					});
+				if(		leaf_size(l1A)+leaf_size(l1C)+leaf_size(l1G) < leaf_size(L1) or
+						leaf_size(l2A)+leaf_size(l2C)+leaf_size(l2G) < leaf_size(L2)){
 
-					/*
-					 * push non-empty leaves in descending order of combined range size.
-					 */
+					l1T = { bwt1->LF(L1.rn,'T'), L1.depth+1 };
+					l2T = { bwt2->LF(L2.rn,'T'), L2.depth+1 };
 
-					for(int i=non_empty_leaves.size()-1;i>=0;--i) S.push(non_empty_leaves[i]);
+					S.push({l1T,l2T});
 
 				}
 
-
+				if(leaf_size(l1A)>0 or leaf_size(l2A)>0) S.push({l1A,l2A});
+				if(leaf_size(l1C)>0 or leaf_size(l2C)>0) S.push({l1C,l2C});
+				if(leaf_size(l1G)>0 or leaf_size(l2G)>0) S.push({l1G,l2G});
 
 			}
-
 		}
+
+		cout << m << "/" << n << endl;
+		cout << "max stack depth = " << max_stack << endl;
+
+		//assert(m==n);
 
 		//add rank support to DA for random access to merged BWT
 		rank1 = bit_vector::rank_1_type(&DA);
@@ -154,10 +173,14 @@ public:
 
 		{
 			std::ofstream out(bwt_path);
+
+			uint64_t rank1 = 0;
 			for(uint64_t i=0;i<n;++i){
 
-				uint8_t c = merged_bwt_at(i);
+				uint8_t c = DA[i]==0 ? bwt1->operator[](i-rank1) : bwt2->operator[](rank1);
 				out.write((char*)&c,sizeof(c));
+
+				rank1 += DA[i];
 
 			}
 			out.close();

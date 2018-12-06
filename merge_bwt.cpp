@@ -37,12 +37,20 @@ void merge(ifstream &in1, ifstream &in2){
 	bwt_1_t BWT1;
 	bwt_2_t BWT2;
 
+	cout << "Loading BWTs ... " << endl;
+
 	BWT1.load(in1);
 	BWT2.load(in2);
 
-	bwt_merger<bwt_1_t,bwt_2_t, uint8_t> M(&BWT1, &BWT2, lcp);
+	cout << "Done. Size of BWTs: " << BWT1.size() << " and " << BWT2.size() << endl;
 
-	M.save_to_file(output_file);
+	cout << "Merging BWTs ... " << endl;
+	bwt_merger<bwt_1_t,bwt_2_t, uint8_t> M(&BWT1, &BWT2, lcp);
+	cout << "Done. " << endl;
+
+	//cout << "Storing output to file ... " << endl;
+	//M.save_to_file(output_file);
+	//cout << "Done. " << endl;
 
 }
 
@@ -90,6 +98,9 @@ int main(int argc, char** argv){
 
 	in1.read((char*)&type1,sizeof(type1));
 	in2.read((char*)&type2,sizeof(type2));
+
+	cout << "Type of BWT 1: " << type1 << endl;
+	cout << "Type of BWT 2: " << type2 << endl;
 
 	switch(type1){
 

@@ -14,7 +14,6 @@ using namespace std;
 
 string input_file;
 string output_file;
-bool convert_n = true;
 bool rle = false;
 bool suc = true;
 bool rrr = false;
@@ -26,7 +25,6 @@ void help(){
 	"-h          Print this help" << endl <<
 	"-i <arg>    Input BWT file (REQUIRED)" << endl <<
 	"-o <arg>    Output index file (REQUIRED)" << endl <<
-	//"-n          Do not convert N's to random bases (DEFAULT: N's are converted)" << endl <<
 	"-r          Run-length compressed BWT" << endl <<
 	"-s          Huffman + succinct bitvectors (DEFAULT)" << endl <<
 	"-e          Huffman + entropy-compressed bitvectors (RRR)" << endl << endl <<
@@ -49,9 +47,6 @@ int main(int argc, char** argv){
 			break;
 			case 'o':
 				output_file = string(optarg);
-			break;
-			case 'n':
-				convert_n = false;
 			break;
 			case 'r':
 				rle=true;suc=false;rrr=false;
@@ -79,7 +74,7 @@ int main(int argc, char** argv){
 	if(rle){
 
 		cout << "Building run-length compressed BWT" << endl;
-		auto BWT = rle_bwt(input_file,convert_n);
+		auto BWT = rle_bwt(input_file);
 
 		std::ofstream out(output_file);
 		uint8_t type = 'r';
@@ -92,7 +87,7 @@ int main(int argc, char** argv){
 	if(suc){
 
 		cout << "Building succinct+Huffman compressed BWT" << endl;
-		auto BWT = suc_bwt(input_file,convert_n);
+		auto BWT = suc_bwt(input_file);
 
 		std::ofstream out(output_file);
 		uint8_t type = 's';
@@ -105,7 +100,7 @@ int main(int argc, char** argv){
 	if(rrr){
 
 		cout << "Building RRR+Huffman compressed BWT" << endl;
-		auto BWT = rrr_bwt(input_file,convert_n);
+		auto BWT = rrr_bwt(input_file);
 
 		std::ofstream out(output_file);
 		uint8_t type = 'e';

@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <vector>
+#include <cassert>
 
 using namespace std;
 
@@ -17,7 +18,7 @@ typedef __int128 uint128_t;
 typedef pair<uint64_t,uint32_t> coordinate;//suffix array coordinate (text, suff)
 typedef pair<uint64_t,uint64_t> range_t;
 
-
+const uint8_t TERM = '#';
 
 /*
  * EGSA
@@ -248,7 +249,7 @@ unsigned char int_to_base(int i){
 		case 1: return 'C'; break;
 		case 2: return 'G'; break;
 		case 3: return 'T'; break;
-		case 4: return '$'; break;
+		case 4: return TERM; break;
 
 	}
 
@@ -264,7 +265,7 @@ int base_to_int(unsigned char c){
 		case 'C': case 'c': return 1; break;
 		case 'G': case 'g': return 2; break;
 		case 'T': case 't': return 3; break;
-		case '$': return 4; break;
+		case TERM: return 4; break;
 		default: return rand()%4; break;
 
 	}
@@ -281,7 +282,7 @@ unsigned char RC(unsigned char c){
 		case 'C': case 'c': return 'G'; break;
 		case 'G': case 'g': return 'C'; break;
 		case 'T': case 't': return 'A'; break;
-		case '$': return '$'; break;
+		case TERM: return TERM; break;
 		default: break;
 
 	}
@@ -366,7 +367,7 @@ private:
 
 };
 
-uint8_t MASK_$ = uint8_t(1);
+uint8_t MASK_TERM = uint8_t(1);
 uint8_t MASK_A = uint8_t(2);
 uint8_t MASK_C = uint8_t(4);
 uint8_t MASK_G = uint8_t(8);
@@ -386,7 +387,7 @@ struct sa_node{
 	//Equivalently, number of suffixes smaller than W.chars[i] is first[i]
 	//vector<uint64_t> first;
 
-	uint64_t first_$;
+	uint64_t first_TERM;
 	uint64_t first_A;
 	uint64_t first_C;
 	uint64_t first_G;
@@ -401,27 +402,32 @@ struct sa_node{
 };
 
 /*
- * suffix array leaf = BWT range (inclusive) of W$, for some string W.
+ * suffix array leaf = BWT range (inclusive) of W.TERM, for some string W.
  *
  */
 struct sa_leaf{
 
-	//rn.first = first position of range. Equivalently, number of suffixes smaller than W$ (valid also if W$ does not occur)
-	//rn.second = last position (excluded) of interval.  Equivalently, number of suffixes smaller than W$ + number of occurrences of W$
-	//if last == first, then W$ does not occur (however, 'first' is in any case number of suffixes smaller than W$)
+	//rn.first = first position of range. Equivalently, number of suffixes smaller than W.TERM (valid also if W.TERM does not occur)
+	//rn.second = last position (excluded) of interval.  Equivalently, number of suffixes smaller than W.TERM + number of occurrences of W.TERM
+	//if last == first, then W.TERM does not occur (however, 'first' is in any case number of suffixes smaller than W.TERM)
 	range_t rn;
 
-	//depth = |W$|
+	//depth = |W.TERM|
 	uint64_t depth;
 
 };
 
 uint64_t range_length(range_t r){
-	return (r.second - r.first) - 1;
+	assert(r.second >= r.first);
+	return r.second - r.first;
 }
 
 uint64_t leaf_size(sa_leaf L){
 	return range_length(L.rn);
+}
+
+uint64_t leaf_size(pair<sa_leaf, sa_leaf> P){
+	return leaf_size(P.first) + leaf_size(P.second);
 }
 
 #endif /* INCLUDE_HPP_ */

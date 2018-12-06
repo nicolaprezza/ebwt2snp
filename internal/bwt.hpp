@@ -32,7 +32,7 @@ public:
 	 * Default block size: 2^29, i.e. approx. 537 MB
 	 *
 	 */
-	bwt(string path, bool random_n = true, uint64_t block_size = (uint64_t(1)<<29) ){
+	bwt(string path, uint64_t block_size = (uint64_t(1)<<29) ){
 
 		//build F column
 		F = vector<uint64_t>(256,0);
@@ -55,7 +55,6 @@ public:
 
 			input.read((char*)buffer.data(), buffer.size());
 
-			convert(buffer, random_n);
 			count_chars(buffer);
 
 			blocks[block_idx++] = str_type(buffer);
@@ -100,17 +99,19 @@ public:
 	 */
 	range_t LF(range_t rn, uint8_t c){
 
-		//if character does not appear in the text, return empty pair
-		//if((c==255 and F[c]==size()) || F[c]>=F[c+1])
-			//return {1,0};
-
 		//number of c before the interval
 		uint64_t c_before = rank(rn.first,c);
 
 		//number of c inside the interval rn
-		uint64_t c_inside = rank(rn.second,c) - c_before;
+		uint64_t c_inside = rn.second > rn.first ? rank(rn.second,c) - c_before : 0;
+
+		assert(F[c] <= size());
+		assert(c_before <= size());
 
 		uint64_t l = F[c] + c_before;
+
+		assert(l<=size());
+		assert(l+c_inside<=size());
 
 		return {l,l+c_inside};
 
@@ -246,7 +247,7 @@ public:
 		out.write((char*)&n,sizeof(n));
 		out.write((char*)&bsize,sizeof(bsize));
 		out.write((char*)&nblocks,sizeof(nblocks));
-		out.write((char*)&F,256*sizeof(uint64_t));
+		out.write((char*)F.data(),256*sizeof(uint64_t));
 
 		w_bytes += sizeof(n) + sizeof(bsize) + sizeof(nblocks);
 
@@ -283,7 +284,7 @@ public:
 		in.read((char*)&nblocks,sizeof(nblocks));
 
 		F = vector<uint64_t>(256, 0);
-		in.read((char*)&F,256*sizeof(uint64_t));
+		in.read((char*)F.data(),256*sizeof(uint64_t));
 
 		if(n==0) return;
 
@@ -332,7 +333,7 @@ public:
 		uint8_t flag = 0;
 
 		return {
-			F['$'],
+			F[TERM],
 			F['A'],
 			F['C'],
 			F['G'],
@@ -346,7 +347,7 @@ public:
 
 	sa_leaf first_leaf(){
 
-		return {{F['$'], F[uint8_t('$')+1]}, 1};
+		return {{F[TERM], F[uint8_t(TERM)+1]}, 1};
 
 	}
 
@@ -368,12 +369,25 @@ public:
 	 */
 	vector<sa_leaf> next_leaves(sa_leaf L){
 
+		assert(L.rn.first <= size());
+		assert(L.rn.second <= size());
+
 		vector<sa_leaf> res(4);
 
 		auto rnA = LF(L.rn, 'A');
 		auto rnC = LF(L.rn, 'C');
 		auto rnG = LF(L.rn, 'G');
 		auto rnT = LF(L.rn, 'T');
+
+		assert(rnA.first <= size());
+		assert(rnC.first <= size());
+		assert(rnG.first <= size());
+		assert(rnT.first <= size());
+
+		assert(rnA.second <= size());
+		assert(rnC.second <= size());
+		assert(rnG.second <= size());
+		assert(rnT.second <= size());
 
 		res[0] = {rnA, L.depth+1};
 		res[1] = {rnC, L.depth+1};
@@ -400,13 +414,6 @@ private:
 	void count_chars(string & s){
 
 		for(auto c:s) F[c]++;
-
-	}
-
-	void convert(string & s, bool random_n){
-
-		for(uint64_t i=0;i<s.size();++i)
-			s[i] = (not random_n) and (s[i]=='N' or s[i]=='n') ? 'N' : int_to_base(base_to_int(s[i]));
 
 	}
 
