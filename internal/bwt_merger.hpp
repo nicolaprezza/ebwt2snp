@@ -36,7 +36,7 @@
 using namespace std;
 using namespace sdsl;
 
-template<class bwt_t, typename lcp_int_t>
+template<class bwt_t1, class bwt_t2, typename lcp_int_t>
 class bwt_merger{
 
 public:
@@ -50,19 +50,22 @@ public:
 	 * lcp_threshold: if >0, compute a boolean array T[i] = 1 iff LCP[i] >= lcp_threshold.
 	 *
 	 */
-	bwt_merger(bwt_t * bwt1, bwt_t * bwt2, bool compute_lcp = false, bool compute_minima = false, uint64_t lcp_threshold = 0){
+	bwt_merger(bwt_t1 * bwt1, bwt_t2 * bwt2, bool compute_lcp = false, bool compute_minima = false, uint64_t lcp_threshold = 0){
 
 		this->bwt1 = bwt1;
 		this->bwt2 = bwt2;
 		this->lcp_threshold = lcp_threshold;
 
-		n = bwt1.size() + bwt2.size();
+		n = bwt1->size() + bwt2->size();
 
 		DA = bit_vector(n);
 
+		if(compute_lcp) LCP = vector<lcp_int_t>(n);
+		if(lcp_threshold>0) T = vector<bool>(n);
+		if(compute_minima) MIN = vector<bool>(n);
 
 		/*
-		 * FIRST PASS: NAVIGATE LEAVES AND MERGE BWTs
+		 * FIRST PASS: NAVIGATE LEAVES AND MERGE BWTs (i.e. build DA). If enabled, compute LCP inside leaves.
 		 */
 
 		{
@@ -88,6 +91,33 @@ public:
 				auto leaves1 = bwt1->next_leaves(L1);
 				auto leaves2 = bwt2->next_leaves(L2);
 
+				vector<pair<sa_leaf, sa_leaf> > non_empty_leaves;
+
+				/*
+				 * Keep pair of leaves {l1,l2} such that at least one of the two is non-empty: in the merged BWT,
+				 * these will generate a non-empty leave
+				 */
+				for(int c=0;c<4;++c){
+
+					if(leaf_size(leaves1[c])>0 or leaf_size(leaves2[c])>0)
+						non_empty_leaves.push_back({leaves1[c],leaves2[c]});
+
+					/*
+					 * sort non-empty leaves in ascending order of combined range size.
+					 */
+					std::sort( non_empty_leaves.begin( ), non_empty_leaves.end( ), [ ]( const pair<sa_leaf, sa_leaf>& lhs, const pair<sa_leaf, sa_leaf>& rhs )
+					{
+					   return range_length(lhs.first.rn)+range_length(lhs.second.rn) < range_length(rhs.first.rn)+range_length(rhs.second.rn);
+					});
+
+					/*
+					 * push non-empty leaves in descending order of combined range size.
+					 */
+
+					for(int i=non_empty_leaves.size()-1;i>=0;--i) S.push(non_empty_leaves[i]);
+
+				}
+
 
 
 			}
@@ -109,9 +139,50 @@ public:
 	}
 
 	/*
-	 * store to file the specified components. Adds extensions .merged.bwt, .merged.da, .merged.lcp
+	 * store to file the components that have been built (BWT, DA for sure; optionally, LCP). Adds extensions .merged.bwt, .merged.da, .merged.lcp
 	 */
-	void save_to_file(string base_path, bool store_bwt = false, bool store_da = false, bool store_lcp = false){
+	void save_to_file(string base_path){
+
+		string bwt_path = base_path;
+		bwt_path.append(".merged.bwt");
+
+		string da_path = base_path;
+		da_path.append(".merged.da");
+
+		string lcp_path = base_path;
+		lcp_path.append(".merged.lcp");
+
+		{
+			std::ofstream out(bwt_path);
+			for(uint64_t i=0;i<n;++i){
+
+				uint8_t c = merged_bwt_at(i);
+				out.write((char*)&c,sizeof(c));
+
+			}
+			out.close();
+		}
+
+		{
+			std::ofstream out(da_path);
+			for(uint64_t i=0;i<n;++i){
+
+				uint8_t c = DA[i];
+				out.write((char*)&c,sizeof(c));
+
+			}
+			out.close();
+		}
+
+		if(LCP.size()>0){
+
+			std::ofstream out(lcp_path);
+
+			out.write((char*)LCP.data(),LCP.size() * sizeof(lcp_int_t));
+
+			out.close();
+
+		}
 
 	}
 
@@ -129,8 +200,8 @@ private:
 
 	uint64_t n = 0;//total size
 
-	bwt_t * bwt1 = NULL;
-	bwt_t * bwt2 = NULL;
+	bwt_t1 * bwt1 = NULL;
+	bwt_t2 * bwt2 = NULL;
 
 };
 

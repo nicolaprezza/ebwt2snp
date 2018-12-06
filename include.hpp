@@ -420,5 +420,9 @@ uint64_t range_length(range_t r){
 	return (r.second - r.first) - 1;
 }
 
+uint64_t leaf_size(sa_leaf L){
+	return range_length(L.rn);
+}
+
 #endif /* INCLUDE_HPP_ */
 

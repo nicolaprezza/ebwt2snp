@@ -9,7 +9,6 @@
 #include <iostream>
 #include <fstream>
 #include "internal/bwt.hpp"
-#include "internal/bwt_merger.hpp"
 
 using namespace std;
 

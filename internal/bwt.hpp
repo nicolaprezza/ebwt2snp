@@ -22,6 +22,8 @@ class bwt{
 
 public:
 
+	bwt(){};
+
 	/*
 	 * constructor: the path of a BWT file and number of blocks n_blocks.
 	 *
