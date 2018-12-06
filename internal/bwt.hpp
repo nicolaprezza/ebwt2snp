@@ -11,6 +11,7 @@
 #include "include.hpp"
 #include "rle_string.hpp"
 #include "huff_string.hpp"
+#include "dna_string.hpp"
 
 #ifndef INTERNAL_BWT_HPP_
 #define INTERNAL_BWT_HPP_

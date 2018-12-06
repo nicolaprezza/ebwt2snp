@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include "internal/bwt.hpp"
+#include "internal/dna_string.hpp"
 
 using namespace std;
 
@@ -33,6 +34,48 @@ void help(){
 }
 
 int main(int argc, char** argv){
+
+	/*srand(time(NULL));
+
+	int n = 100000;
+
+	string s(n,'A');
+	dna_string dna(n);
+
+	for(int i=0;i<n;++i){
+
+		int x = rand()%6;
+
+		switch(x){
+
+		case 0: s[i]='A'; dna.set(i,'A');break;
+		case 1: s[i]='C'; dna.set(i,'C');break;
+		case 2: s[i]='G'; dna.set(i,'G');break;
+		case 3: s[i]='T'; dna.set(i,'T');break;
+		case 4: s[i]=TERM; dna.set(i,TERM);break;
+		case 5: s[i]='N'; dna.set(i,'N');break;
+
+		}
+
+	}
+
+	cout << endl;
+	for(int i=0;i<n;++i) cout << dna[i];
+	cout << endl;
+	for(int i=0;i<n;++i) cout << s[i];
+	cout << endl;
+
+
+	for(int i=0;i<n;++i){
+
+		if(dna[i] != s[i]){
+			cout << "err: " << i << " " << dna[i] << " " << s[i] << endl;
+			exit(0);
+		}
+
+	}
+
+	cout << "success" << endl;exit(0);*/
 
 	if(argc < 3) help();
 
