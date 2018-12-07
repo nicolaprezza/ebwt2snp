@@ -36,15 +36,24 @@
 
 #include "include.hpp"
 
-struct p_rank{
+class p_rank{
 
-	uint64_t A = 0;
-	uint64_t C = 0;
-	uint64_t G = 0;
-	uint64_t T = 0;
+public:
+
+	uint64_t A;
+	uint64_t C;
+	uint64_t G;
+	uint64_t T;
 
 	p_rank operator+(const p_rank& a) const{
-		return { a.A + A, a.C + C, a.G + G, a.T + T };
+
+		return {
+			a.A + A,
+			a.C + C,
+			a.G + G,
+			a.T + T
+		};
+
 	}
 
 };
@@ -150,6 +159,15 @@ public:
 
 	void build_rank_support(){
 
+		p_rank r;
+
+		for(uint64_t i = 1; i<n_blocks_512;++i){
+
+			r = r + block_rank(i-1,BLOCK_SIZE);
+			set_counters(i,r);
+
+		}
+
 	}
 
 	/*
@@ -160,6 +178,25 @@ public:
 		assert(i<=n);
 		uint64_t bl = i/BLOCK_SIZE;
 		return get_counters(bl) + block_rank(bl,i%BLOCK_SIZE);
+
+	}
+
+	/*
+	 * standard rank. c can be A,C,G,T, or TERM (TERM = any non-dna symbol is counted, which could include also N if present)
+	 */
+	uint64_t rank(uint64_t i, uint8_t c){
+
+		p_rank pr = parallel_rank(i);
+
+		switch(c){
+			case 'A' : return pr.A; break;
+			case 'C' : return pr.C; break;
+			case 'G' : return pr.G; break;
+			case 'T' : return pr.T; break;
+			case TERM : return rank_non_dna(i); break;
+		}
+
+		return 0;
 
 	}
 
@@ -202,12 +239,12 @@ private:
 		uint64_t x1 = x>>1;
 		uint64_t x2 = x1>>1;
 
-		uint64_t A = __builtin_popcountll(((~x2) & MASK) & ((~x1) & MASK) & ((~x) & MASK));//000
-		uint64_t C = __builtin_popcountll(((~x2) & MASK) & ((~x1) & MASK) & ((x) & MASK));//001
-		uint64_t G = __builtin_popcountll(((~x2) & MASK) & ((x1) & MASK) & ((~x) & MASK));//010
-		uint64_t T = __builtin_popcountll(((~x2) & MASK) & ((x1) & MASK) & ((x) & MASK));//011
-
-		return {A,C,G,T};
+		return {
+			uint64_t(__builtin_popcountll(((~x2) & MASK) & ((~x1) & MASK) & ((~x) & MASK))),
+			uint64_t(__builtin_popcountll(((~x2) & MASK) & ((~x1) & MASK) & ((x) & MASK))),
+			uint64_t(__builtin_popcountll(((~x2) & MASK) & ((x1) & MASK) & ((~x) & MASK))),
+			uint64_t(__builtin_popcountll(((~x2) & MASK) & ((x1) & MASK) & ((x) & MASK)))
+		};
 
 	}
 
@@ -225,10 +262,10 @@ private:
 		uint8_t off = j%SUB_BLOCK_SIZE; // prefix length in the bl-th block
 
 		return	word_rank( data[start],   bl == 0 ? off : SUB_BLOCK_SIZE ) +
-				bl < 1 ? p_rank() : word_rank( data[start+1], bl == 1 ? off : SUB_BLOCK_SIZE) +
-				bl < 2 ? p_rank() : word_rank( data[start+2], bl == 2 ? off : SUB_BLOCK_SIZE) +
-				bl < 3 ? p_rank() : word_rank( data[start+3], bl == 3 ? off : SUB_BLOCK_SIZE) +
-				bl < 4 ? p_rank() : word_rank( data[start+4], off);
+				(bl < 1 ? p_rank() : word_rank( data[start+1], bl == 1 ? off : SUB_BLOCK_SIZE)) +
+				(bl < 2 ? p_rank() : word_rank( data[start+2], bl == 2 ? off : SUB_BLOCK_SIZE)) +
+				(bl < 3 ? p_rank() : word_rank( data[start+3], bl == 3 ? off : SUB_BLOCK_SIZE)) +
+				(bl < 4 ? p_rank() : word_rank( data[start+4], bl == 4 ? off : SUB_BLOCK_SIZE));
 
 	}
 
@@ -237,7 +274,7 @@ private:
 	 */
 	void set_counters(uint64_t i, p_rank r){
 
-		uint64_t start = i*WORDS_PER_BLOCK;//start of region where to write the three 48-bits numbers
+		uint64_t start = i*WORDS_PER_BLOCK;//start of region where to write the four 48-bits numbers
 
 		data[start]   |= (r.A << 16);//first 48 bits of data[start] contain r.A
 
@@ -256,7 +293,13 @@ private:
 	 */
 	inline p_rank get_counters(uint64_t i){
 
-		return {};
+		uint64_t start = i*WORDS_PER_BLOCK;//start of region where to read the four 48-bits numbers
+
+		return {	data[start]>>16,
+					((data[start]&0x000000000000FFFF)<<32) | (data[start+1]>>32),
+					((data[start+1]&0x00000000FFFFFFFF)<<16) | (data[start+2]>>48),
+					data[start+2]&0x0000FFFFFFFFFFFF
+		};
 
 	}
 
