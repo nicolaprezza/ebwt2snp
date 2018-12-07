@@ -430,5 +430,39 @@ uint64_t leaf_size(pair<sa_leaf, sa_leaf> P){
 	return leaf_size(P.first) + leaf_size(P.second);
 }
 
+class p_rank{
+
+public:
+
+	uint64_t A;
+	uint64_t C;
+	uint64_t G;
+	uint64_t T;
+
+	p_rank operator+(const p_rank& a) const{
+
+		return {
+			a.A + A,
+			a.C + C,
+			a.G + G,
+			a.T + T
+		};
+
+	}
+
+	bool operator==(const p_rank& a) const{
+
+		return a.A == A and a.C == C and a.G == G and a.T == T;
+
+	}
+
+	bool operator!=(const p_rank& a) const{
+
+		return a.A != A or a.C != C or a.G != G or a.T != T;
+
+	}
+
+};
+
 #endif /* INCLUDE_HPP_ */
 

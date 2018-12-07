@@ -10,6 +10,7 @@
 #include <fstream>
 #include "internal/bwt.hpp"
 #include "internal/dna_string.hpp"
+#include "include.hpp"
 
 using namespace std;
 
@@ -37,7 +38,7 @@ int main(int argc, char** argv){
 
 	/*srand(time(NULL));
 
-	int n = 100000;
+	int n = 100000000;
 
 	string s(n,'A');
 	dna_string dna(n);
@@ -59,12 +60,13 @@ int main(int argc, char** argv){
 
 	}
 
-	cout << endl;
+	/*cout << endl;
 	for(int i=0;i<n;++i) cout << dna[i];
 	cout << endl;
 	for(int i=0;i<n;++i) cout << s[i];
-	cout << endl;
+	cout << endl;*//*
 
+	dna.build_rank_support();
 
 	for(int i=0;i<n;++i){
 
@@ -74,6 +76,31 @@ int main(int argc, char** argv){
 		}
 
 	}
+
+	p_rank r = {};
+
+	for(int i=0;i<n;++i){
+
+		auto x = dna.parallel_rank(i);
+
+		if(r != x){
+			cout << "err in rank at position " << i << endl;
+			cout << r.A << " " << x.A << endl;
+			cout << r.C << " " << x.C << endl;
+			cout << r.G << " " << x.G << endl;
+			cout << r.T << " " << x.T << endl;
+
+			exit(0);
+		}
+
+		r.A += (s[i]=='A');
+		r.C += (s[i]=='C');
+		r.G += (s[i]=='G');
+		r.T += (s[i]=='T');
+
+	}
+
+
 
 	cout << "success" << endl;exit(0);*/
 

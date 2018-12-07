@@ -36,28 +36,6 @@
 
 #include "include.hpp"
 
-class p_rank{
-
-public:
-
-	uint64_t A;
-	uint64_t C;
-	uint64_t G;
-	uint64_t T;
-
-	p_rank operator+(const p_rank& a) const{
-
-		return {
-			a.A + A,
-			a.C + C,
-			a.G + G,
-			a.T + T
-		};
-
-	}
-
-};
-
 class dna_string{
 
 public:
@@ -159,7 +137,7 @@ public:
 
 	void build_rank_support(){
 
-		p_rank r;
+		p_rank r = {};
 
 		for(uint64_t i = 1; i<n_blocks_512;++i){
 
@@ -177,7 +155,15 @@ public:
 
 		assert(i<=n);
 		uint64_t bl = i/BLOCK_SIZE;
-		return get_counters(bl) + block_rank(bl,i%BLOCK_SIZE);
+		p_rank res = get_counters(bl) + block_rank(bl,i%BLOCK_SIZE);
+
+		assert(res.A <= n);
+		assert(res.C <= n);
+		assert(res.G <= n);
+		assert(res.T <= n);
+
+		return res;
+
 
 	}
 
@@ -261,11 +247,13 @@ private:
 		uint8_t bl = j/SUB_BLOCK_SIZE; // block where position j lies.
 		uint8_t off = j%SUB_BLOCK_SIZE; // prefix length in the bl-th block
 
-		return	word_rank( data[start],   bl == 0 ? off : SUB_BLOCK_SIZE ) +
+		p_rank res =	word_rank( data[start],   bl == 0 ? off : SUB_BLOCK_SIZE ) +
 				(bl < 1 ? p_rank() : word_rank( data[start+1], bl == 1 ? off : SUB_BLOCK_SIZE)) +
 				(bl < 2 ? p_rank() : word_rank( data[start+2], bl == 2 ? off : SUB_BLOCK_SIZE)) +
 				(bl < 3 ? p_rank() : word_rank( data[start+3], bl == 3 ? off : SUB_BLOCK_SIZE)) +
 				(bl < 4 ? p_rank() : word_rank( data[start+4], bl == 4 ? off : SUB_BLOCK_SIZE));
+
+		return res;
 
 	}
 
@@ -273,6 +261,11 @@ private:
 	 * set counters in the i-th block to r
 	 */
 	void set_counters(uint64_t i, p_rank r){
+
+		assert(r.A <= n);
+		assert(r.C <= n);
+		assert(r.G <= n);
+		assert(r.T <= n);
 
 		uint64_t start = i*WORDS_PER_BLOCK;//start of region where to write the four 48-bits numbers
 
@@ -282,9 +275,21 @@ private:
 		data[start+1] |= ((r.C & 0x00000000FFFFFFFF) << 32);//first 32 bits of data[start+1] contain last 32 bits of r.C
 
 		data[start+1] |= (r.G >> 16) ; //last 32 bits of data[start+1] contain first 32 bits of r.G
-		data[start+2] |= ((r.G & 0x000000000000FFFF) << 48) ; //first 16 bits of data[start+2] contain last 16 bits of r.G
 
-		data[start+2] |= r.T; //last 48 bits of data[start+2] contain the 48 bits of r.G
+		assert(data[start+2] == 0);
+
+		data[start+2] |= (r.G << 48) ; //first 16 bits of data[start+2] contain last 16 bits of r.G
+
+		assert((data[start+2] & 0x0000FFFFFFFFFFFF) == 0);
+
+		data[start+2] |= r.T; //last 48 bits of data[start+2] contain the 48 bits of r.T
+
+		assert(data[start]>>16 == r.A);
+		assert((((data[start] & 0x000000000000FFFF)<<32) | (data[start+1]>>32)) == r.C);
+		assert((((data[start+1] & 0x00000000FFFFFFFF)<<16) | (data[start+2]>>48)) == r.G);
+		assert((data[start+2] & 0x0000FFFFFFFFFFFF) == r.T);
+
+		assert(get_counters(i) == r);
 
 	}
 
@@ -295,11 +300,18 @@ private:
 
 		uint64_t start = i*WORDS_PER_BLOCK;//start of region where to read the four 48-bits numbers
 
-		return {	data[start]>>16,
-					((data[start]&0x000000000000FFFF)<<32) | (data[start+1]>>32),
-					((data[start+1]&0x00000000FFFFFFFF)<<16) | (data[start+2]>>48),
-					data[start+2]&0x0000FFFFFFFFFFFF
+		p_rank res = {	  data[start]>>16,
+						((data[start]&0x000000000000FFFF)<<32) | (data[start+1]>>32),
+						((data[start+1]&0x00000000FFFFFFFF)<<16) | (data[start+2]>>48),
+						  data[start+2]&0x0000FFFFFFFFFFFF
 		};
+
+		assert(res.A <= n);
+		assert(res.C <= n);
+		assert(res.G <= n);
+		assert(res.T <= n);
+
+		return res;
 
 	}
 
