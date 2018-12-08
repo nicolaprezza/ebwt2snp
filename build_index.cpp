@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <fstream>
+#include "internal/dna_bwt.hpp"
 #include "internal/bwt.hpp"
 #include "internal/dna_string.hpp"
 #include "include.hpp"
@@ -34,9 +35,57 @@ void help(){
 	exit(0);
 }
 
+struct block{
+	uint64_t x_1;
+	uint64_t x_2;
+	uint64_t x_3;
+	uint64_t x_4;
+	uint64_t x_5;
+	uint64_t x_6;
+	uint64_t x_7;
+	uint64_t x_8;
+};
+
+int bin(uint64_t x){
+
+	bool bit=1;
+
+	int cnt=0;
+
+	do{
+
+		bit = (x&uint64_t(1));
+		x = x>>1;
+
+		if(not bit) cnt++;
+
+	}while(bit==0);
+
+	return cnt;
+}
+
+void printbin(uint64_t x){
+
+	bool bit=1;
+
+	int cnt=0;
+
+	while(x>0){
+
+		bit = (x&uint64_t(1));
+		x = x>>1;
+
+		cout << uint64_t(bit);
+
+	};
+
+	cout << endl;
+}
+
 int main(int argc, char** argv){
 
-	/*srand(time(NULL));
+
+/*	srand(time(NULL));
 
 	int n = 100000000;
 
@@ -64,9 +113,14 @@ int main(int argc, char** argv){
 	for(int i=0;i<n;++i) cout << dna[i];
 	cout << endl;
 	for(int i=0;i<n;++i) cout << s[i];
-	cout << endl;*//*
+	cout << endl;*/
 
-	dna.build_rank_support();
+	/*dna.build_rank_support();
+
+
+
+
+
 
 	for(int i=0;i<n;++i){
 
@@ -100,9 +154,17 @@ int main(int argc, char** argv){
 
 	}
 
+	cout << "success" << endl;exit(0);
 
 
-	cout << "success" << endl;exit(0);*/
+
+
+
+*/
+
+
+
+
 
 	if(argc < 3) help();
 
@@ -141,7 +203,14 @@ int main(int argc, char** argv){
 	cout << "Input bwt file: " << input_file << endl;
 	cout << "Output index file: " << output_file << endl;
 
-	if(rle){
+	cout << "Building DNA-optimized BWT ..." << endl;
+	auto BWT = dna_bwt_t(input_file);
+
+	cout << "Done. Storing to file ..." << endl;
+	BWT.save_to_file(output_file);
+	cout << "Done. " << endl;
+
+	/*if(rle){
 
 		cout << "Building run-length compressed BWT" << endl;
 		auto BWT = rle_bwt(input_file);
@@ -178,7 +247,7 @@ int main(int argc, char** argv){
 		BWT.serialize(out);
 		out.close();
 
-	}
+	}*/
 
 
 }

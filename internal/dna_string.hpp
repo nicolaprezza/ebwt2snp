@@ -40,8 +40,10 @@ class dna_string{
 
 public:
 
+	dna_string(){}
+
 	/*
-	 * constructor from file
+	 * constructor from ASCII file
 	 */
 	dna_string(string path){
 
@@ -50,28 +52,41 @@ public:
 		n_blocks_512 = n/BLOCK_SIZE + (n%BLOCK_SIZE != 0);
 		n_blocks_64 = n_blocks_512 * 8;
 
-		data = new uint64_t[n_blocks_64];
+		/*
+		 * this block of code ensures that data is aligned by 64 bytes = 512 bits
+		 */
+		memory = vector<uint8_t>((n_blocks_64 * 8)+64,0);
+		uint8_t * p = memory.data();
+		while(uint64_t(p) % 64 != 0) p++;
+		data = (uint64_t*)p;
 
-		for(uint64_t i=0;i<n_blocks_512;++i) data[i] = 0;
+		cout << "alignment of data: " << (void*)data << endl;
 
-		ifstream ifs(path);
+		{
 
-		uint8_t i = 0;
-		while(not ifs.eof()){
+			ifstream ifs(path);
 
-			uint8_t c;
-			ifs.read((char*)&c, sizeof(uint8_t));
+			for(uint64_t i = 0; i<n; ++i){
 
-			if(c != 'A' and c != 'C' and c != 'G' and c != 'T' and c != 'N' and c != TERM){
+				uint8_t c;
+				ifs.read((char*)&c, sizeof(uint8_t));
 
-				cout << "Error while loading file " << path << ": forbidden character '" << c << "'" << endl;
-				exit(1);
+				if(c != 'A' and c != 'C' and c != 'G' and c != 'T' and c != 'N' and c != TERM){
+
+					cout << "Error while loading file " << path << ": forbidden character '" << c << "'" << endl;
+					exit(1);
+
+				}
+
+				set(i,c);
+				assert(operator[](i) == c);
 
 			}
 
-			set(i++,c);
-
 		}
+
+		assert(check_content(path));
+		build_rank_support();
 
 	}
 
@@ -88,9 +103,15 @@ public:
 		n_blocks_512 = size/BLOCK_SIZE + (size%BLOCK_SIZE != 0);
 		n_blocks_64 = n_blocks_512 * 8;
 
-		data = new uint64_t[n_blocks_64];
+		/*
+		 * this block of code ensures that data is aligned by 64 bytes = 512 bits
+		 */
+		memory = vector<uint8_t>((n_blocks_64 * 8)+64,0);
+		uint8_t * p = memory.data();
+		while(uint64_t(p) % 64 != 0) p++;
+		data = (uint64_t*)p;
 
-		for(uint64_t i=0;i<n_blocks_512;++i) data[i] = 0;
+		cout << "alignment of data: " << (void*)data << endl;
 
 	}
 
@@ -98,6 +119,8 @@ public:
 	 * set the i-th character to c.
 	 */
 	void set(uint64_t i, uint8_t c){
+
+		assert(i<n);
 
 		//A is 0x0
 		uint64_t b = 	(c == 'C')*  uint64_t(1) +
@@ -124,7 +147,12 @@ public:
 		uint8_t sub_block_number = 	off_in_block / SUB_BLOCK_SIZE;
 		uint8_t off_in_sub_block = 	off_in_block % SUB_BLOCK_SIZE;
 
-		uint64_t b = (data[block_number * WORDS_PER_BLOCK + 3 + sub_block_number] >> ((SUB_BLOCK_SIZE - off_in_sub_block -1)*3)) & 0x7;
+		//assert(block_number * WORDS_PER_BLOCK + 3 + sub_block_number < data.size());
+		//assert(data!=NULL);
+
+		uint64_t X = data[block_number * WORDS_PER_BLOCK + 3 + sub_block_number];
+
+		uint64_t b = (X >> ((SUB_BLOCK_SIZE - off_in_sub_block -1)*3)) & 0x7;
 
 		return 	(b == 0)*'A' +
 				(b == 1)*'C' +
@@ -146,6 +174,8 @@ public:
 
 		}
 
+		assert(check_rank());
+
 	}
 
 	/*
@@ -163,7 +193,6 @@ public:
 		assert(res.T <= n);
 
 		return res;
-
 
 	}
 
@@ -200,13 +229,96 @@ public:
 
 	}
 
-	~dna_string(){
+	uint64_t serialize(std::ostream& out){
 
-		delete data;
+		uint64_t w_bytes = 0;
+
+		out.write((char*)&n_blocks_512,sizeof(n_blocks_512));
+		out.write((char*)&n_blocks_64,sizeof(n_blocks_64));
+		out.write((char*)&n,sizeof(n));
+
+		w_bytes += sizeof(n) + sizeof(n_blocks_512) + sizeof(n_blocks_64);
+
+		out.write((char*)data,sizeof(uint64_t)*n_blocks_64);
+
+		w_bytes += sizeof(uint64_t)*n_blocks_64;
+
+		return w_bytes;
 
 	}
 
+	void load(std::istream& in) {
+
+		uint64_t memsize = 0;
+
+		in.read((char*)&n_blocks_512,sizeof(n_blocks_512));
+		in.read((char*)&n_blocks_64,sizeof(n_blocks_64));
+		in.read((char*)&n,sizeof(n));
+
+		/*
+		 * this block of code ensures that data is aligned by 64 bytes = 512 bits
+		 */
+		memory = vector<uint8_t>((n_blocks_64 * 8)+64,0);
+		uint8_t * p = memory.data();
+		while(uint64_t(p) % 64 != 0) p++;
+		data = (uint64_t*)p;
+
+		in.read((char*)data,sizeof(uint64_t)*n_blocks_64);
+
+		cout << "alignment of data: " << (void*)data << endl;
+
+		assert(check_rank());
+
+	}
+
+	uint64_t size(){
+		return n;
+	}
+
 private:
+
+	bool check_rank(){
+
+		p_rank p = {};
+
+		for(int i=0;i<size();++i){
+
+			if(p != parallel_rank(i)) return false;
+
+			assert(i<n);
+
+			p.A += (operator[](i)=='A');
+			p.C += (operator[](i)=='C');
+			p.G += (operator[](i)=='G');
+			p.T += (operator[](i)=='T');
+
+		}
+
+		if(p != parallel_rank(n)) return false;
+
+		return true;
+
+	}
+
+	/*
+	 * check that the string contains exactly the same characters as the file in path
+	 */
+	bool check_content(string path){
+
+		ifstream ifs(path);
+
+		for(uint64_t i=0;i<n;++i){
+
+			uint8_t c;
+			ifs.read((char*)&c, sizeof(uint8_t));
+
+			if(operator[](i) != c) return false;
+
+		}
+
+		return true;
+
+	}
 
 	/*
 	 * A 64-bits word represents a block of SUB_BLOCK_SIZE = 21 characters (leftmost bit wasted).
@@ -322,8 +434,10 @@ private:
 	 */
 	static const uint64_t MASK = 0x1249249249249249;
 
+	vector<uint8_t> memory; //allocated memory
+
 	//data aligned with blocks of 64 bytes = 512 bits
-	alignas(64) uint64_t * data = NULL;
+	uint64_t * data = NULL;
 
 	uint64_t n_blocks_512 = 0;
 	uint64_t n_blocks_64 = 0;

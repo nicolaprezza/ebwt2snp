@@ -29,6 +29,7 @@
 #ifndef INTERNAL_BWT_MERGER_HPP_
 #define INTERNAL_BWT_MERGER_HPP_
 
+#include "dna_bwt.hpp"
 #include "bwt.hpp"
 #include "sdsl/int_vector.hpp"
 #include <stack>
@@ -77,7 +78,19 @@ public:
 			stack<pair<sa_leaf, sa_leaf> > S;
 			S.push({bwt1->first_leaf(), bwt2->first_leaf()});
 
+			int last_perc = -1;
+			int perc = 0;
+
 			while(not S.empty()){
+
+				perc = (100*m)/n;
+
+				if(perc > last_perc){
+
+					cout << perc << "% done" << endl;
+					last_perc = perc;
+
+				}
 
 				auto L = S.top();
 				S.pop();
@@ -108,6 +121,15 @@ public:
 				assert(m<=n);
 				assert(L1.depth==L2.depth);
 
+				p_range ext_1 = bwt1->parallel_LF(L1.rn);
+				p_range ext_2 = bwt2->parallel_LF(L2.rn);
+
+				if(range_length(ext_1.A)>0 or range_length(ext_2.A)>0) S.push({{ext_1.A, L1.depth+1},{ext_2.A, L2.depth+1}});
+				if(range_length(ext_1.C)>0 or range_length(ext_2.C)>0) S.push({{ext_1.C, L1.depth+1},{ext_2.C, L2.depth+1}});
+				if(range_length(ext_1.G)>0 or range_length(ext_2.G)>0) S.push({{ext_1.G, L1.depth+1},{ext_2.G, L2.depth+1}});
+				if(range_length(ext_1.T)>0 or range_length(ext_2.T)>0) S.push({{ext_1.T, L1.depth+1},{ext_2.T, L2.depth+1}});
+
+				/*
 				//leaves with extension A
 				sa_leaf l1A = { bwt1->LF(L1.rn,'A'), L1.depth+1 };
 				sa_leaf l2A = { bwt2->LF(L2.rn,'A'), L2.depth+1 };
@@ -131,9 +153,13 @@ public:
 
 				}
 
+
 				if(leaf_size(l1A)>0 or leaf_size(l2A)>0) S.push({l1A,l2A});
 				if(leaf_size(l1C)>0 or leaf_size(l2C)>0) S.push({l1C,l2C});
 				if(leaf_size(l1G)>0 or leaf_size(l2G)>0) S.push({l1G,l2G});
+			*/
+
+
 
 			}
 		}
@@ -141,7 +167,7 @@ public:
 		cout << m << "/" << n << endl;
 		cout << "max stack depth = " << max_stack << endl;
 
-		//assert(m==n);
+		assert(m==n);
 
 		//add rank support to DA for random access to merged BWT
 		rank1 = bit_vector::rank_1_type(&DA);

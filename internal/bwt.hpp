@@ -250,7 +250,7 @@ public:
 		out.write((char*)&nblocks,sizeof(nblocks));
 		out.write((char*)F.data(),256*sizeof(uint64_t));
 
-		w_bytes += sizeof(n) + sizeof(bsize) + sizeof(nblocks);
+		w_bytes += sizeof(n) + sizeof(bsize) + sizeof(nblocks) + 256*sizeof(uint64_t);
 
 		if(n==0) return w_bytes;
 

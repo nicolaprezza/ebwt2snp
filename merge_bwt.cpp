@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <fstream>
+#include "internal/dna_bwt.hpp"
 #include "internal/bwt.hpp"
 #include "internal/bwt_merger.hpp"
 
@@ -32,15 +33,15 @@ void help(){
 }
 
 template<class bwt_1_t, class bwt_2_t, typename lcp_t>
-void merge(ifstream &in1, ifstream &in2){
+void merge(string &in1, string &in2){
+
+	cout << "Loading BWTs ... " << endl;
 
 	bwt_1_t BWT1;
 	bwt_2_t BWT2;
 
-	cout << "Loading BWTs ... " << endl;
-
-	BWT1.load(in1);
-	BWT2.load(in2);
+	BWT1.load_from_file(in1);
+	BWT2.load_from_file(in2);
 
 	cout << "Done. Size of BWTs: " << BWT1.size() << " and " << BWT2.size() << endl;
 
@@ -90,10 +91,12 @@ int main(int argc, char** argv){
 	cout << "Input bwt index file 2: " << input_bwt2 << endl;
 	cout << "Output prefix: " << output_file << endl;
 
-	std::ifstream in1(input_bwt1);
-	std::ifstream in2(input_bwt2);
+	//std::ifstream in1(input_bwt1);
+	//std::ifstream in2(input_bwt2);
 
-	uint8_t type1 = 0;
+	merge<dna_bwt_t,dna_bwt_t,uint8_t>(input_bwt1,input_bwt2);
+
+	/*uint8_t type1 = 0;
 	uint8_t type2 = 0;
 
 	in1.read((char*)&type1,sizeof(type1));
@@ -133,7 +136,7 @@ int main(int argc, char** argv){
 
 	default:break;
 
-	}
+	}*/
 
 
 }

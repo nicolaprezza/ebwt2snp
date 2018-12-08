@@ -430,7 +430,17 @@ uint64_t leaf_size(pair<sa_leaf, sa_leaf> P){
 	return leaf_size(P.first) + leaf_size(P.second);
 }
 
-class p_rank{
+
+struct p_range{
+
+	range_t A;
+	range_t C;
+	range_t G;
+	range_t T;
+
+};
+
+struct p_rank{
 
 public:
 
@@ -450,6 +460,17 @@ public:
 
 	}
 
+	/*p_rank operator-(const p_rank& a) const{
+
+		return {
+			A-a.A,
+			C-a.C,
+			G-a.G,
+			T-a.T
+		};
+
+	}*/
+
 	bool operator==(const p_rank& a) const{
 
 		return a.A == A and a.C == C and a.G == G and a.T == T;
@@ -462,7 +483,20 @@ public:
 
 	}
 
+	bool operator<=(const p_rank& a) const{
+
+		return A <= a.A and C <= a.C and G <= a.G and T <= a.T;
+
+	}
+
 };
+
+p_range fold_ranks(p_rank &a, p_rank &b){
+
+	return {{a.A, b.A},{a.C, b.C},{a.G, b.G},{a.T, b.T}};
+
+}
+
 
 #endif /* INCLUDE_HPP_ */
 
