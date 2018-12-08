@@ -8,31 +8,25 @@
  *
  *  One access or a parallel rank for all 4 letters A,C,G,T causes only 1 cache miss in the worst case
  *
- *  Max string length: 2^48
+ *  Max string length: 2^64
  *
  *  Supports very efficient (1 cache miss) parallel rank for (A,C,G,T), and (1 cache miss) single rank for other characters combined ($ + N)
  *  Note: if both N's and $'s are present, then can only compute combined rank of N + $!
  *
- *
  *  Data is stored and cache-aligned in blocks of 512 bits (64 bytes)
  *
- *  Each block contains:
- *
- *  - in the first 24 bytes = 3 * 64-bit words = 192 bits, 4 integers of 48 bits each storing the partial ranks
- *    before the block for A, C, G, T
- *  - in the next 40 bytes = 5 * 64-bit words = 320 bits, 105 nucleotides, 'N', or terminator character,
- *    encoded using 3-bits per letter. These characters are stored in blocks of 21 per 64-bit word, wasting only 1 bit per word.
- *
- *    Size of the string: < 4,9 bits / base
  *
  */
 
 #ifndef INTERNAL_DNA_STRING_HPP_
 #define INTERNAL_DNA_STRING_HPP_
 
-#define BLOCK_SIZE 105 //characters per block of 512 bits
-#define SUB_BLOCK_SIZE 21
-#define WORDS_PER_BLOCK 8
+#define SUPERBLOCK_SIZE 0x100000000 	//number of characters in a superblock = 2^32 characters
+#define BLOCKS_PER_SUPERBLOCK 33554432	//blocks in a superblock
+#define BYTES_PER_SUPERBLOCK 2147483648	//bytes in a superblock
+#define BLOCK_SIZE 128 					//number of characters inside a block
+#define BYTES_PER_BLOCK 64				//bytes in a block of 512 bits
+#define ALN 64
 
 #include "include.hpp"
 
@@ -49,16 +43,18 @@ public:
 
 		n = uint64_t(filesize(path));
 
-		n_blocks_512 = n/BLOCK_SIZE + (n%BLOCK_SIZE != 0);
-		n_blocks_64 = n_blocks_512 * 8;
+		n_superblocks = n/SUPERBLOCK_SIZE + (n%SUPERBLOCK_SIZE != 0);
+		n_blocks = n/128 + (n%128 != 0);
+		nbytes = (n_blocks * BYTES_PER_BLOCK);//number of bytes effectively filled with data
+
+		superblock_ranks = vector<p_rank>(n_superblocks);
 
 		/*
 		 * this block of code ensures that data is aligned by 64 bytes = 512 bits
 		 */
-		memory = vector<uint8_t>((n_blocks_64 * 8)+64,0);
-		uint8_t * p = memory.data();
-		while(uint64_t(p) % 64 != 0) p++;
-		data = (uint64_t*)p;
+		memory = vector<uint8_t>(nbytes+ALN,0);
+		data = memory.data();
+		while(uint64_t(data) % ALN != 0) data++;
 
 		cout << "alignment of data: " << (void*)data << endl;
 
@@ -96,20 +92,20 @@ public:
 	 * after allocation, fill the string using set(), and then build rank support.
 	 *
 	 */
-	dna_string(uint64_t size){
+	dna_string(uint64_t n){
 
-		n = size;
+		n_superblocks = n/SUPERBLOCK_SIZE + (n%SUPERBLOCK_SIZE != 0);
+		n_blocks = n/128 + (n%128 != 0);
+		nbytes = (n_blocks * BYTES_PER_BLOCK);//number of bytes effectively filled with data
 
-		n_blocks_512 = size/BLOCK_SIZE + (size%BLOCK_SIZE != 0);
-		n_blocks_64 = n_blocks_512 * 8;
+		superblock_ranks = vector<p_rank>(n_superblocks);
 
 		/*
 		 * this block of code ensures that data is aligned by 64 bytes = 512 bits
 		 */
-		memory = vector<uint8_t>((n_blocks_64 * 8)+64,0);
-		uint8_t * p = memory.data();
-		while(uint64_t(p) % 64 != 0) p++;
-		data = (uint64_t*)p;
+		memory = vector<uint8_t>(nbytes+ALN,0);
+		data = memory.data();
+		while(uint64_t(data) % ALN != 0) data++;
 
 		cout << "alignment of data: " << (void*)data << endl;
 
@@ -123,36 +119,43 @@ public:
 		assert(i<n);
 
 		//A is 0x0
-		uint64_t b = 	(c == 'C')*  uint64_t(1) +
-						(c == 'G')*  uint64_t(2) +
-						(c == 'T')*  uint64_t(3) +
-						(c == TERM)* uint64_t(4) +
-						(c == 'N')*  uint64_t(5);
+		uint64_t b = 	(c == 'C')*  0x1 +
+						(c == 'G')*  0x2 +
+						(c == 'T')*  0x3 +
+						(c == TERM)* 0x4 +
+						(c == 'N')*  0x5;
 
-		uint64_t block_number = i / BLOCK_SIZE;
-		uint64_t off_in_block = i % BLOCK_SIZE;
-		uint8_t sub_block_number = 	off_in_block / SUB_BLOCK_SIZE;
-		uint8_t off_in_sub_block = 	off_in_block % SUB_BLOCK_SIZE;
+		uint64_t superblock_number = i / SUPERBLOCK_SIZE;
+		uint64_t superblock_off = i % SUPERBLOCK_SIZE;
+		uint64_t block_number = superblock_off / BLOCK_SIZE;
+		uint64_t block_off = superblock_off % BLOCK_SIZE;
 
-		data[block_number * WORDS_PER_BLOCK + 3 + sub_block_number] += (b << ((SUB_BLOCK_SIZE - off_in_sub_block -1)*3));
+		//chars[0..3] contains 1st, 2nd, 3rd bits of the 128 characters
+		__uint128_t* chars = (__uint128_t*)(data + superblock_number*BYTES_PER_SUPERBLOCK + block_number*BYTES_PER_BLOCK);
+
+		//from rightmost to leftmost bit
+		chars[0] |= ((__uint128_t(b&0x1))<<(128-(block_off+1)));
+		chars[1] |= ((__uint128_t((b&0x2)>>1))<<(128-(block_off+1)));
+		chars[2] |= ((__uint128_t((b&0x4)>>2))<<(128-(block_off+1)));
 
 	}
 
+	//return i-th character
 	uint8_t operator[](uint64_t i){
 
 		assert(i<n);
 
-		uint64_t block_number = i / BLOCK_SIZE;
-		uint64_t off_in_block = i % BLOCK_SIZE;
-		uint8_t sub_block_number = 	off_in_block / SUB_BLOCK_SIZE;
-		uint8_t off_in_sub_block = 	off_in_block % SUB_BLOCK_SIZE;
+		uint64_t superblock_number = i / SUPERBLOCK_SIZE;
+		uint64_t superblock_off = i % SUPERBLOCK_SIZE;
+		uint64_t block_number = superblock_off / BLOCK_SIZE;
+		uint64_t block_off = superblock_off % BLOCK_SIZE;
 
-		//assert(block_number * WORDS_PER_BLOCK + 3 + sub_block_number < data.size());
-		//assert(data!=NULL);
+		//chars[0..3] contains 1st, 2nd, 3rd least significant bits of the 128 characters
+		__uint128_t* chars = (__uint128_t*)(data + superblock_number*BYTES_PER_SUPERBLOCK + block_number*BYTES_PER_BLOCK);
 
-		uint64_t X = data[block_number * WORDS_PER_BLOCK + 3 + sub_block_number];
-
-		uint64_t b = (X >> ((SUB_BLOCK_SIZE - off_in_sub_block -1)*3)) & 0x7;
+		uint64_t b =	((chars[0]>>(128-(block_off+1)))&0x1) +
+						(((chars[1]>>(128-(block_off+1)))&0x1)<<1) +
+						(((chars[2]>>(128-(block_off+1)))&0x1)<<2);
 
 		return 	(b == 0)*'A' +
 				(b == 1)*'C' +
@@ -165,12 +168,27 @@ public:
 
 	void build_rank_support(){
 
-		p_rank r = {};
+		p_rank superblock_r = {};
+		p_rank block_r = {};
 
-		for(uint64_t i = 1; i<n_blocks_512;++i){
+		for(uint64_t bl = 0; bl < n_blocks; ++bl){
 
-			r = r + block_rank(i-1,BLOCK_SIZE);
-			set_counters(i,r);
+			uint64_t superblock_number = bl/BLOCKS_PER_SUPERBLOCK;
+			uint64_t block_number = bl%BLOCKS_PER_SUPERBLOCK;
+
+			if(block_number == 0){
+
+				superblock_ranks[superblock_number]=superblock_r;
+				block_r = {};
+
+			}
+
+			set_counters(superblock_number, block_number,block_r);
+
+			p_rank local_rank = block_rank(superblock_number, block_number, 128);
+
+			block_r = block_r + local_rank;
+			superblock_r = superblock_r + local_rank;
 
 		}
 
@@ -179,20 +197,21 @@ public:
 	}
 
 	/*
-	 * return number of occurrences of A,C,T,G in the prefix of length i of the text. At most 1 cache miss!
+	 * Parallel rank of (A,C,T,G) for the length-j prefix of the block of 512 bytes (128 characters) starting in start.
+	 * The block belongs to the superblock_nr-th superblock
+	 *
 	 */
 	p_rank parallel_rank(uint64_t i){
 
-		assert(i<=n);
-		uint64_t bl = i/BLOCK_SIZE;
-		p_rank res = get_counters(bl) + block_rank(bl,i%BLOCK_SIZE);
+		uint64_t superblock_number = i / SUPERBLOCK_SIZE;
+		uint64_t superblock_off = i % SUPERBLOCK_SIZE;
+		uint64_t block_number = superblock_off / BLOCK_SIZE;
+		uint64_t block_off = superblock_off % BLOCK_SIZE;
 
-		assert(res.A <= n);
-		assert(res.C <= n);
-		assert(res.G <= n);
-		assert(res.T <= n);
+		p_rank superblock_r = superblock_ranks[superblock_number];
+		p_rank block_r = get_counters(superblock_number,block_number);
 
-		return res;
+		return superblock_r + block_r + block_rank(superblock_number, block_number, block_off);
 
 	}
 
@@ -233,15 +252,18 @@ public:
 
 		uint64_t w_bytes = 0;
 
-		out.write((char*)&n_blocks_512,sizeof(n_blocks_512));
-		out.write((char*)&n_blocks_64,sizeof(n_blocks_64));
 		out.write((char*)&n,sizeof(n));
+		out.write((char*)&nbytes,sizeof(nbytes));
+		out.write((char*)&n_superblocks,sizeof(n_superblocks));
+		out.write((char*)&n_blocks,sizeof(n_blocks));
 
-		w_bytes += sizeof(n) + sizeof(n_blocks_512) + sizeof(n_blocks_64);
+		w_bytes += sizeof(n) + sizeof(nbytes) + sizeof(n_superblocks) + sizeof(n_blocks);
 
-		out.write((char*)data,sizeof(uint64_t)*n_blocks_64);
+		out.write((char*)superblock_ranks.data(),n_superblocks*sizeof(p_rank));
+		w_bytes += n_superblocks*sizeof(p_rank);
 
-		w_bytes += sizeof(uint64_t)*n_blocks_64;
+		out.write((char*)memory.data(),(nbytes+ALN)*sizeof(uint8_t));
+		w_bytes += (nbytes+ALN)*sizeof(uint8_t);
 
 		return w_bytes;
 
@@ -249,23 +271,16 @@ public:
 
 	void load(std::istream& in) {
 
-		uint64_t memsize = 0;
-
-		in.read((char*)&n_blocks_512,sizeof(n_blocks_512));
-		in.read((char*)&n_blocks_64,sizeof(n_blocks_64));
 		in.read((char*)&n,sizeof(n));
+		in.read((char*)&nbytes,sizeof(nbytes));
+		in.read((char*)&n_superblocks,sizeof(n_superblocks));
+		in.read((char*)&n_blocks,sizeof(n_blocks));
 
-		/*
-		 * this block of code ensures that data is aligned by 64 bytes = 512 bits
-		 */
-		memory = vector<uint8_t>((n_blocks_64 * 8)+64,0);
-		uint8_t * p = memory.data();
-		while(uint64_t(p) % 64 != 0) p++;
-		data = (uint64_t*)p;
+		superblock_ranks = vector<p_rank>(n_superblocks);
+		in.read((char*)superblock_ranks.data(),n_superblocks*sizeof(p_rank));
 
-		in.read((char*)data,sizeof(uint64_t)*n_blocks_64);
-
-		cout << "alignment of data: " << (void*)data << endl;
+		memory = vector<uint8_t>(nbytes+ALN);
+		in.read((char*)memory.data(),(nbytes+ALN)*sizeof(uint8_t));
 
 		assert(check_rank());
 
@@ -276,6 +291,33 @@ public:
 	}
 
 private:
+
+	/*
+	 * rank in block given as coordinates: superblock, block, offset
+	 */
+	inline p_rank block_rank(uint64_t superblock_number, uint64_t block_number, uint64_t block_off){
+
+		//starting address of the block
+		uint8_t* start = data + superblock_number*BYTES_PER_SUPERBLOCK + block_number*BYTES_PER_BLOCK;
+
+		//chars[0..3] contains 1st, 2nd, 3rd bits of the 128 characters
+		__uint128_t* chars = (__uint128_t*)(start);
+
+		//partial ranks
+		uint32_t * block_ranks = (uint32_t*)(start+48);
+
+		__uint128_t b2 = ~((chars[2]) | ((~__uint128_t(0))>>block_off)); //most significant bit, padded
+
+		return {
+
+			popcount128(b2 & (~chars[1]) & (~chars[0])),
+			popcount128(b2 & (chars[1]) & (~chars[0])),
+			popcount128(b2 & (chars[1]) & (~chars[0])),
+			popcount128(b2 & (chars[1]) & (chars[0]))
+
+		};
+
+	}
 
 	bool check_rank(){
 
@@ -321,126 +363,52 @@ private:
 	}
 
 	/*
-	 * A 64-bits word represents a block of SUB_BLOCK_SIZE = 21 characters (leftmost bit wasted).
-	 * This function counts in parallel the number of A,C,G,T in the prefix of length i of the block.
-	 *
-	 */
-	inline p_rank word_rank(uint64_t x, uint8_t i){
-
-		if(i==0) return {};
-
-		//First, replace with '111' (unused code) the last SUB_BLOCK_SIZE - i characters
-
-		x |= ( (uint64_t(1) << (3*(SUB_BLOCK_SIZE - i)))-1 );
-
-		//x shifted to the left 1 and 2 positions
-		uint64_t x1 = x>>1;
-		uint64_t x2 = x1>>1;
-
-		return {
-			uint64_t(__builtin_popcountll(((~x2) & MASK) & ((~x1) & MASK) & ((~x) & MASK))),
-			uint64_t(__builtin_popcountll(((~x2) & MASK) & ((~x1) & MASK) & ((x) & MASK))),
-			uint64_t(__builtin_popcountll(((~x2) & MASK) & ((x1) & MASK) & ((~x) & MASK))),
-			uint64_t(__builtin_popcountll(((~x2) & MASK) & ((x1) & MASK) & ((x) & MASK)))
-		};
-
-	}
-
-	/*
-	 * Parallel rank of (A,C,T,G) for the length-j prefix of the i-th block of size BLOCK_SIZE of the text
-	 *
-	 */
-	inline p_rank block_rank(uint64_t i, uint8_t j){
-
-		if(j==0) return {};
-
-		uint64_t start = i*WORDS_PER_BLOCK + 3;//first word containing the block's characters
-
-		uint8_t bl = j/SUB_BLOCK_SIZE; // block where position j lies.
-		uint8_t off = j%SUB_BLOCK_SIZE; // prefix length in the bl-th block
-
-		p_rank res =	word_rank( data[start],   bl == 0 ? off : SUB_BLOCK_SIZE ) +
-				(bl < 1 ? p_rank() : word_rank( data[start+1], bl == 1 ? off : SUB_BLOCK_SIZE)) +
-				(bl < 2 ? p_rank() : word_rank( data[start+2], bl == 2 ? off : SUB_BLOCK_SIZE)) +
-				(bl < 3 ? p_rank() : word_rank( data[start+3], bl == 3 ? off : SUB_BLOCK_SIZE)) +
-				(bl < 4 ? p_rank() : word_rank( data[start+4], bl == 4 ? off : SUB_BLOCK_SIZE));
-
-		return res;
-
-	}
-
-	/*
 	 * set counters in the i-th block to r
 	 */
-	void set_counters(uint64_t i, p_rank r){
+	void set_counters(uint64_t superblock_number, uint64_t block_number, p_rank r){
 
-		assert(r.A <= n);
-		assert(r.C <= n);
-		assert(r.G <= n);
-		assert(r.T <= n);
+		//block start
+		uint8_t* start = data + superblock_number*BYTES_PER_SUPERBLOCK + block_number*BYTES_PER_BLOCK;
+		uint32_t * block_ranks = (uint32_t*)(start+48);
 
-		uint64_t start = i*WORDS_PER_BLOCK;//start of region where to write the four 48-bits numbers
-
-		data[start]   |= (r.A << 16);//first 48 bits of data[start] contain r.A
-
-		data[start]   |= (r.C >> 32);//last 16 bits of data[start] contain first 16 bits of r.C
-		data[start+1] |= ((r.C & 0x00000000FFFFFFFF) << 32);//first 32 bits of data[start+1] contain last 32 bits of r.C
-
-		data[start+1] |= (r.G >> 16) ; //last 32 bits of data[start+1] contain first 32 bits of r.G
-
-		assert(data[start+2] == 0);
-
-		data[start+2] |= (r.G << 48) ; //first 16 bits of data[start+2] contain last 16 bits of r.G
-
-		assert((data[start+2] & 0x0000FFFFFFFFFFFF) == 0);
-
-		data[start+2] |= r.T; //last 48 bits of data[start+2] contain the 48 bits of r.T
-
-		assert(data[start]>>16 == r.A);
-		assert((((data[start] & 0x000000000000FFFF)<<32) | (data[start+1]>>32)) == r.C);
-		assert((((data[start+1] & 0x00000000FFFFFFFF)<<16) | (data[start+2]>>48)) == r.G);
-		assert((data[start+2] & 0x0000FFFFFFFFFFFF) == r.T);
-
-		assert(get_counters(i) == r);
+		block_ranks[0] = r.A;
+		block_ranks[1] = r.C;
+		block_ranks[2] = r.G;
+		block_ranks[3] = r.T;
 
 	}
 
 	/*
 	 * get counters of the i-th block
 	 */
-	inline p_rank get_counters(uint64_t i){
+	inline p_rank get_counters(uint64_t superblock_number, uint64_t superblock_off){
 
-		uint64_t start = i*WORDS_PER_BLOCK;//start of region where to read the four 48-bits numbers
+		//block start
+		uint8_t* start = data + superblock_number*BYTES_PER_SUPERBLOCK + superblock_off*BYTES_PER_BLOCK;
+		uint32_t * block_ranks = (uint32_t*)(start+48);
 
-		p_rank res = {	  data[start]>>16,
-						((data[start]&0x000000000000FFFF)<<32) | (data[start+1]>>32),
-						((data[start+1]&0x00000000FFFFFFFF)<<16) | (data[start+2]>>48),
-						  data[start+2]&0x0000FFFFFFFFFFFF
+		return {
+			block_ranks[0],
+			block_ranks[1],
+			block_ranks[2],
+			block_ranks[3]
 		};
-
-		assert(res.A <= n);
-		assert(res.C <= n);
-		assert(res.G <= n);
-		assert(res.T <= n);
-
-		return res;
 
 	}
 
-	/*
-	 * MASK =
-	 *    0001 0010 0100 1001 0010 0100 1001 0010 0100 1001 0010 0100 1001 0010 0100 1001 =
-	 * 0x 1    2    4    9    2    4    9    2    4    9    2    4    9    2    4    9
-	 */
-	static const uint64_t MASK = 0x1249249249249249;
+	static const uint64_t MASK_PAD = 0x7FFFFFFFFFFFFFFF;
+
+	uint64_t n_superblocks = 0;
+	uint64_t n_blocks = 0;
 
 	vector<uint8_t> memory; //allocated memory
 
 	//data aligned with blocks of 64 bytes = 512 bits
-	uint64_t * data = NULL;
+	uint8_t * data = NULL;
 
-	uint64_t n_blocks_512 = 0;
-	uint64_t n_blocks_64 = 0;
+	vector<p_rank> superblock_ranks;
+
+	uint64_t nbytes = 0; //bytes used in data
 	uint64_t n = 0;
 
 };

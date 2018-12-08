@@ -31,7 +31,7 @@ void help(){
 	"-r          Run-length compressed BWT" << endl <<
 	"-s          Huffman + succinct bitvectors (DEFAULT)" << endl <<
 	"-e          Huffman + entropy-compressed bitvectors (RRR)" << endl << endl <<
- 	"Note: string terminators must be stored as '$'." << endl;
+ 	"Note: string terminators must be stored as '#'." << endl;
 	exit(0);
 }
 
