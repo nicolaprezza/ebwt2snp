@@ -138,6 +138,8 @@ public:
 		chars[1] |= ((__uint128_t((b&0x2)>>1))<<(128-(block_off+1)));
 		chars[2] |= ((__uint128_t((b&0x4)>>2))<<(128-(block_off+1)));
 
+		assert(operator[](i)==c);
+
 	}
 
 	//return i-th character
@@ -293,7 +295,7 @@ public:
 private:
 
 	/*
-	 * rank in block given as coordinates: superblock, block, offset
+	 * rank in block given as coordinates: superblock, block, offset in block
 	 */
 	inline p_rank block_rank(uint64_t superblock_number, uint64_t block_number, uint64_t block_off){
 
@@ -306,16 +308,39 @@ private:
 		//partial ranks
 		uint32_t * block_ranks = (uint32_t*)(start+48);
 
-		__uint128_t b2 = ~((chars[2]) | ((~__uint128_t(0))>>block_off)); //most significant bit, padded
+		__uint128_t PAD = (1-(block_off == 128))*((~__uint128_t(0))>>block_off);
 
-		return {
+		__uint128_t b2 = ~(chars[2] | PAD); //most significant bit, padded and negated
+
+		p_rank res = {
 
 			popcount128(b2 & (~chars[1]) & (~chars[0])),
-			popcount128(b2 & (chars[1]) & (~chars[0])),
+			popcount128(b2 & (~chars[1]) & (chars[0])),
 			popcount128(b2 & (chars[1]) & (~chars[0])),
 			popcount128(b2 & (chars[1]) & (chars[0]))
 
 		};
+
+		//assert(check_rank_local(res, superblock_number*SUPERBLOCK_SIZE + block_number*BLOCK_SIZE, block_off));
+
+		return res;
+
+	}
+
+	bool check_rank_local(p_rank p, uint64_t i, uint64_t len){
+
+		p_rank r = {};
+
+		for(uint64_t j = i; j < i+len; ++j){
+
+			if(operator[](j)=='A') r.A++;
+			if(operator[](j)=='C') r.C++;
+			if(operator[](j)=='G') r.G++;
+			if(operator[](j)=='T') r.T++;
+
+		}
+
+		return r == p;
 
 	}
 
@@ -323,9 +348,11 @@ private:
 
 		p_rank p = {};
 
+		bool res = true;
+
 		for(int i=0;i<size();++i){
 
-			if(p != parallel_rank(i)) return false;
+			if(p != parallel_rank(i)) res = false;
 
 			assert(i<n);
 
@@ -336,9 +363,19 @@ private:
 
 		}
 
-		if(p != parallel_rank(n)) return false;
+		if(p != parallel_rank(n)) res = false;
 
-		return true;
+		if(res){
+
+			cout << "rank is correct" << endl;
+
+		}else{
+
+			cout << "rank is not correct" << endl;
+
+		}
+
+		return res;
 
 	}
 
@@ -349,16 +386,28 @@ private:
 
 		ifstream ifs(path);
 
+		bool res = true;
+
 		for(uint64_t i=0;i<n;++i){
 
 			uint8_t c;
 			ifs.read((char*)&c, sizeof(uint8_t));
 
-			if(operator[](i) != c) return false;
+			if(operator[](i) != c) res = false;
 
 		}
 
-		return true;
+		if(res){
+
+			cout << "string content is valid" << endl;
+
+		}else{
+
+			cout << "string content is not valid" << endl;
+
+		}
+
+		return res;
 
 	}
 
@@ -375,6 +424,8 @@ private:
 		block_ranks[1] = r.C;
 		block_ranks[2] = r.G;
 		block_ranks[3] = r.T;
+
+		assert(get_counters(superblock_number,block_number) == r);
 
 	}
 

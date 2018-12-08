@@ -84,7 +84,6 @@ void printbin(uint64_t x){
 
 int main(int argc, char** argv){
 
-
 /*	srand(time(NULL));
 
 	int n = 100000000;

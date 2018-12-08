@@ -499,7 +499,7 @@ p_range fold_ranks(p_rank &a, p_rank &b){
 
 uint64_t popcount128(__uint128_t x){
 
-	return __builtin_popcountll(uint64_t(x>>64)) + __builtin_popcountll( *(((uint64_t*)(&x))+1) );
+	return __builtin_popcountll(uint64_t(x>>64)) + __builtin_popcountll( x & 0xFFFFFFFFFFFFFFFF );
 
 }
 
