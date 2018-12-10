@@ -85,23 +85,26 @@ int main(int argc, char** argv){
 
 	cout << "Done. Size of BWTs: " << BWT1.size() << " and " << BWT2.size() << endl;
 
-	cout << "Merging BWTs ... " << endl;
-
 	switch(lcp_size){
 
 		case 0: { bwt_merger<dna_bwt_t,dna_bwt_t, uint8_t> M0(&BWT1, &BWT2, false, out_da);
+				cout << "Storing output to file ... " << endl;
 				M0.save_to_file(output_file);
 				break; }
 		case 1: { bwt_merger<dna_bwt_t,dna_bwt_t, uint8_t> M1(&BWT1, &BWT2, true, out_da);
+				cout << "Storing output to file ... " << endl;
 				M1.save_to_file(output_file);
 				break;}
 		case 2: {bwt_merger<dna_bwt_t,dna_bwt_t, uint16_t> M2(&BWT1, &BWT2, true, out_da);
+				cout << "Storing output to file ... " << endl;
 				M2.save_to_file(output_file);
 				break;}
 		case 4: {bwt_merger<dna_bwt_t,dna_bwt_t, uint32_t> M4(&BWT1, &BWT2, true, out_da);
+				cout << "Storing output to file ... " << endl;
 				M4.save_to_file(output_file);
 				break;}
 		case 8: {bwt_merger<dna_bwt_t,dna_bwt_t, uint64_t> M8(&BWT1, &BWT2, true, out_da);
+				cout << "Storing output to file ... " << endl;
 				M8.save_to_file(output_file);
 				break;}
 		default:break;

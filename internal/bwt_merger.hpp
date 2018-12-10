@@ -63,7 +63,12 @@ public:
 
 		DA = bit_vector(n);
 
-		if(compute_lcp) LCP = vector<lcp_int_t>(n);
+		if(compute_lcp){
+
+			LCP = vector<lcp_int_t>(n);
+			LCP[0] = 0;
+		}
+
 		if(lcp_threshold>0) T = vector<bool>(n);
 		if(compute_minima) MIN = vector<bool>(n);
 
@@ -71,9 +76,12 @@ public:
 		 * FIRST PASS: NAVIGATE LEAVES AND MERGE BWTs (i.e. build DA). If enabled, compute LCP inside leaves.
 		 */
 
+		cout << "\nNow navigating suffix tree leaves to merge BWTs and computing internal LCP values (if LCP enabled)." << endl;
+
 		uint64_t m = 0;//number of entries filled in DA
 		uint64_t leaves = 0;//number of visited nodes
 		uint64_t max_stack = 0;
+		uint64_t lcp_values = 1;//number of filled LCP values
 
 		{
 
@@ -94,7 +102,7 @@ public:
 
 				}
 
-				auto L = S.top();
+				pair<sa_leaf, sa_leaf> L = S.top();
 				S.pop();
 				leaves++;
 
@@ -120,8 +128,20 @@ public:
 					m++;
 				}
 
-				assert(m<=n);
 				assert(L1.depth==L2.depth);
+
+				if(compute_lcp){
+
+					for(uint64_t i = start1+1; i<=end; ++i){
+
+						LCP[i] = L1.depth;
+						lcp_values++;
+
+					}
+
+				}
+
+				assert(m<=n);
 
 				p_range ext_1 = bwt1->parallel_LF(L1.rn);
 				p_range ext_2 = bwt2->parallel_LF(L2.rn);
@@ -134,14 +154,82 @@ public:
 			}
 		}
 
-		cout << m << "/" << n << endl;
-		cout << "max stack depth = " << max_stack << endl;
-		cout << "processed " << leaves << " suffix-tree leaves." << endl;
+		cout << "Computed " << m << "/" << n << " DA entries." << endl;
+		cout << "Max stack depth = " << max_stack << endl;
+		cout << "Processed " << leaves << " suffix-tree leaves." << endl;
 
 		assert(m==n);
 
 		//add rank support to DA for random access to merged BWT
 		rank1 = bit_vector::rank_1_type(&DA);
+
+		if(compute_lcp){
+
+			cout << "\nNow navigating suffix tree nodes to compute remaining LCP values." << endl;
+
+			uint64_t nodes = 0;//visited ST nodes
+			max_stack = 0;
+
+			stack<pair<sa_node, sa_node> > S;
+			S.push({bwt1->root(), bwt2->root()});
+
+			int last_perc = -1;
+			int perc = 0;
+
+			while(not S.empty()){
+
+				perc = (100*lcp_values)/n;
+
+				if(perc > last_perc){
+
+					cout << "Computed LCP values: " << perc << "% " << endl;
+					last_perc = perc;
+
+				}
+
+				pair<sa_node, sa_node> N = S.top();
+				S.pop();
+				nodes++;
+
+				max_stack = S.size() > max_stack ? S.size() : max_stack;
+
+				sa_node N1 = N.first;
+				sa_node N2 = N.second;
+
+				sa_node merged = merge_nodes(N1, N2);
+
+				if(merged.first_A-merged.first_TERM > 0){
+					LCP[merged.first_A] = merged.depth;
+					lcp_values++;
+				}
+				if(merged.first_C-merged.first_A > 0){
+					LCP[merged.first_C] = merged.depth;
+					lcp_values++;
+				}
+				if(merged.first_G-merged.first_C > 0){
+					LCP[merged.first_G] = merged.depth;
+					lcp_values++;
+				}
+				if(merged.first_T-merged.first_G > 0){
+					LCP[merged.first_T] = merged.depth;
+					lcp_values++;
+				}
+
+				p_node left_exts1 = bwt1->weiner(N1);
+				p_node left_exts2 = bwt2->weiner(N2);
+
+				if(number_of_children(left_exts1.A, left_exts2.A)>1) S.push({left_exts1.A, left_exts2.A});
+				if(number_of_children(left_exts1.C, left_exts2.C)>1) S.push({left_exts1.C, left_exts2.C});
+				if(number_of_children(left_exts1.G, left_exts2.G)>1) S.push({left_exts1.G, left_exts2.G});
+				if(number_of_children(left_exts1.T, left_exts2.T)>1) S.push({left_exts1.T, left_exts2.T});
+
+			}
+
+			cout << "Computed " << lcp_values << "/" << n << " LCP values." << endl;
+			cout << "Max stack depth = " << max_stack << endl;
+			cout << "Processed " << nodes << " suffix-tree nodes." << endl;
+
+		}
 
 	}
 

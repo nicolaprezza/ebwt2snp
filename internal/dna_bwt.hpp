@@ -242,8 +242,6 @@ public:
 
 	sa_node root(){
 
-		uint8_t flag = 0;
-
 		return {
 			F[TERM],
 			F['A'],
@@ -251,26 +249,28 @@ public:
 			F['G'],
 			F['T'],
 			F['T'+1],
-			0,
 			0
 		};
 
 	}
 
+	/*
+	 * depth = LCP inside the leaf.
+	 */
 	sa_leaf first_leaf(){
 
-		return {{F[TERM], F[uint8_t(TERM)+1]}, 1};
+		return {{F[TERM], F[uint8_t(TERM)+1]}, 0};
 
 	}
 
 	/*
 	 * Input: suffix array node N representing right-maximal string W
-	 * Output: vector of sa nodes a_1.W,...,a_k.W (i.e. right-maximal substrings) reached
-	 * following Weiner links from N. Output nodes are sorted by first char, i.e. a_1, ..., a_k.
+	 * Output: vector of sa nodes A.W,...,T.W reached
+	 * following Weiner links from N. Nodes could be implicit!
 	 */
-	vector<sa_node> weiner(sa_node N){
+	p_node weiner(sa_node N){
 
-		return vector<sa_node>();
+		return {};
 
 	}
 

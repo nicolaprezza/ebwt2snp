@@ -397,9 +397,13 @@ struct sa_node{
 	//depth = |W|
 	uint64_t depth;
 
-	uint8_t h;//head = first character of suffix = W[0]. Equal to 0 if W = empty string.
-
 };
+
+sa_node merge_nodes(sa_node a, sa_node b){
+
+	return {};
+
+}
 
 /*
  * suffix array leaf = BWT range (inclusive) of W.TERM, for some string W.
@@ -437,6 +441,15 @@ struct p_range{
 	range_t C;
 	range_t G;
 	range_t T;
+
+};
+
+struct p_node{
+
+	sa_node A;
+	sa_node C;
+	sa_node G;
+	sa_node T;
 
 };
 
@@ -492,6 +505,28 @@ inline uint64_t popcount128(__uint128_t x){
 
 }
 
+bool number_of_children(sa_node N){
+
+	return 	(N.last-N.first_T>0) +
+			(N.first_T-N.first_G>0) +
+			(N.first_G-N.first_C>0) +
+			(N.first_C-N.first_A>0) +
+			(N.first_A-N.first_TERM>0);
+
+}
+
+/*
+ * number of children in the union of the two nodes
+ */
+bool number_of_children(sa_node N1, sa_node N2){
+
+	return 	(N1.last-N1.first_T>0 or N2.last-N2.first_T>0) +
+			(N1.first_T-N1.first_G>0 or N2.first_T-N2.first_G>0) +
+			(N1.first_G-N1.first_C>0 or N2.first_G-N2.first_C>0) +
+			(N1.first_C-N1.first_A>0 or N2.first_C-N2.first_A>0) +
+			(N1.first_A-N1.first_TERM>0 or N2.first_A-N2.first_TERM>0);
+
+}
 
 #endif /* INCLUDE_HPP_ */
 
