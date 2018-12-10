@@ -132,7 +132,7 @@ public:
 
 				if(compute_lcp){
 
-					for(uint64_t i = start1+1; i<=end; ++i){
+					for(uint64_t i = start1+1; i<end; ++i){
 
 						LCP[i] = L1.depth;
 						lcp_values++;
@@ -155,6 +155,10 @@ public:
 		}
 
 		cout << "Computed " << m << "/" << n << " DA entries." << endl;
+
+		if(compute_lcp)
+		cout << "Computed " << lcp_values << "/" << n << " LCP values." << endl;
+
 		cout << "Max stack depth = " << max_stack << endl;
 		cout << "Processed " << leaves << " suffix-tree leaves." << endl;
 
@@ -187,11 +191,11 @@ public:
 
 				}
 
+				max_stack = S.size() > max_stack ? S.size() : max_stack;
+
 				pair<sa_node, sa_node> N = S.top();
 				S.pop();
 				nodes++;
-
-				max_stack = S.size() > max_stack ? S.size() : max_stack;
 
 				sa_node N1 = N.first;
 				sa_node N2 = N.second;
@@ -217,6 +221,15 @@ public:
 
 				p_node left_exts1 = bwt1->weiner(N1);
 				p_node left_exts2 = bwt2->weiner(N2);
+
+				/*cout << "weiners:" << endl;
+				print_node(N1);
+				print_node(N2);
+				cout << endl;
+				print_nodes(left_exts1);
+				cout << endl;
+				print_nodes(left_exts2);
+				cout << endl;*/
 
 				if(number_of_children(left_exts1.A, left_exts2.A)>1) S.push({left_exts1.A, left_exts2.A});
 				if(number_of_children(left_exts1.C, left_exts2.C)>1) S.push({left_exts1.C, left_exts2.C});

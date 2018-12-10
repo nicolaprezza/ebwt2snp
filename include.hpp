@@ -399,9 +399,30 @@ struct sa_node{
 
 };
 
+void print_node(sa_node n){
+
+	cout << "[" << 	n.first_TERM << ", " <<
+					n.first_A << ", " <<
+					n.first_C << ", " <<
+					n.first_G << ", " <<
+					n.first_T << ", " <<
+					n.last << "]" << endl;
+
+}
+
 sa_node merge_nodes(sa_node a, sa_node b){
 
-	return {};
+	assert(a.depth == b.depth);
+
+	return {
+		a.first_TERM + b.first_TERM,
+		a.first_A + b.first_A,
+		a.first_C + b.first_C,
+		a.first_G + b.first_G,
+		a.first_T + b.first_T,
+		a.last + b.last,
+		a.depth
+	};
 
 }
 
@@ -452,6 +473,15 @@ struct p_node{
 	sa_node T;
 
 };
+
+void print_nodes(p_node p){
+
+	print_node(p.A);
+	print_node(p.C);
+	print_node(p.G);
+	print_node(p.T);
+
+}
 
 struct p_rank{
 
@@ -518,7 +548,7 @@ bool number_of_children(sa_node N){
 /*
  * number of children in the union of the two nodes
  */
-bool number_of_children(sa_node N1, sa_node N2){
+uint8_t number_of_children(sa_node N1, sa_node N2){
 
 	return 	(N1.last-N1.first_T>0 or N2.last-N2.first_T>0) +
 			(N1.first_T-N1.first_G>0 or N2.first_T-N2.first_G>0) +

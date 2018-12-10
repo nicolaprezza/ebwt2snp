@@ -270,7 +270,36 @@ public:
 	 */
 	p_node weiner(sa_node N){
 
-		return {};
+		p_rank before_TERM;
+		p_rank before_A;
+		p_rank before_C;
+		p_rank before_G;
+		p_rank before_T;
+		p_rank before_end;
+
+		before_TERM = parallel_rank(N.first_TERM);
+
+		if(N.first_A == N.first_TERM) before_A = before_TERM;
+		else before_A = parallel_rank(N.first_A);
+
+		if(N.first_C == N.first_A) before_C = before_A;
+		else before_C = parallel_rank(N.first_C);
+
+		if(N.first_G == N.first_C) before_G = before_C;
+		else before_G = parallel_rank(N.first_G);
+
+		if(N.first_T == N.first_G) before_T = before_G;
+		else before_T = parallel_rank(N.first_T);
+
+		if(N.last == N.first_T) before_end = before_T;
+		else before_end = parallel_rank(N.last);
+
+		return {
+			{before_TERM.A, before_A.A, before_C.A, before_G.A, before_T.A, before_end.A, N.depth+1},
+			{before_TERM.C, before_A.C, before_C.C, before_G.C, before_T.C, before_end.C, N.depth+1},
+			{before_TERM.G, before_A.G, before_C.G, before_G.G, before_T.G, before_end.G, N.depth+1},
+			{before_TERM.T, before_A.T, before_C.T, before_G.T, before_T.T, before_end.T, N.depth+1}
+		};
 
 	}
 
