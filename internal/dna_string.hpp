@@ -4,14 +4,13 @@
  *  Created on: Dec 6, 2018
  *      Author: nico
  *
- *  Optimized string with rank on DNA alphabet: {A,C,G,T,TERM,N}, where the terminator TERM is defined in include.hpp
+ *  Optimized string with rank on DNA alphabet: {A,C,G,T,TERM}, where the terminator TERM is defined in include.hpp
  *
  *  One access or a parallel rank for all 4 letters A,C,G,T causes only 1 cache miss in the worst case
  *
  *  Max string length: 2^64
  *
- *  Supports very efficient (1 cache miss) parallel rank for (A,C,G,T), and (1 cache miss) single rank for other characters combined ($ + N)
- *  Note: if both N's and $'s are present, then can only compute combined rank of N + $!
+ *  Supports very efficient (1 cache miss) parallel rank for (A,C,G,T), and (1 cache miss) single rank for TERM
  *
  *  Data is stored and cache-aligned in blocks of 512 bits (64 bytes)
  *
@@ -69,7 +68,7 @@ public:
 				uint8_t c;
 				ifs.read((char*)&c, sizeof(uint8_t));
 
-				if(c != 'A' and c != 'C' and c != 'G' and c != 'T' and c != 'N' and c != TERM){
+				if(c != 'A' and c != 'C' and c != 'G' and c != 'T' and c != TERM){
 
 					cout << "Error while loading file " << path << ": forbidden character '" << c << "'" << endl;
 					exit(1);
@@ -167,8 +166,7 @@ public:
 				(b == 1)*'C' +
 				(b == 2)*'G' +
 				(b == 3)*'T' +
-				(b == 4)*TERM +
-				(b == 5)*'N';
+				(b == 4)*TERM;
 
 	}
 
@@ -234,7 +232,7 @@ public:
 	}
 
 	/*
-	 * standard rank. c can be A,C,G,T, or TERM (TERM = any non-dna symbol is counted, which could include also N if present)
+	 * standard rank. c can be A,C,G,T, or TERM
 	 */
 	uint64_t rank(uint64_t i, uint8_t c){
 

@@ -47,12 +47,14 @@ public:
 	 *
 	 * bwt1, bwt2: the two BWTs.
 	 * compute_lcp = if true, compute the LCP array of the merged BWT.
+	 * out_da = store to file document array.
 	 * compute_minima: if true, compute array with 1 at the local minima of the LCP array
 	 * lcp_threshold: if >0, compute a boolean array T[i] = 1 iff LCP[i] >= lcp_threshold.
 	 *
 	 */
-	bwt_merger(bwt_t1 * bwt1, bwt_t2 * bwt2, bool compute_lcp = false, bool compute_minima = false, uint64_t lcp_threshold = 0){
+	bwt_merger(bwt_t1 * bwt1, bwt_t2 * bwt2, bool compute_lcp = false, bool out_da = false, bool compute_minima = false, uint64_t lcp_threshold = 0){
 
+		this->out_da = out_da;
 		this->bwt1 = bwt1;
 		this->bwt2 = bwt2;
 		this->lcp_threshold = lcp_threshold;
@@ -189,7 +191,7 @@ public:
 	void save_to_file(string base_path){
 
 		string bwt_path = base_path;
-		bwt_path.append(".merged.bwt");
+		bwt_path.append(".merged.ebwt");
 
 		string da_path = base_path;
 		da_path.append(".merged.da");
@@ -212,11 +214,11 @@ public:
 			out.close();
 		}
 
-		{
+		if(out_da){
 			std::ofstream out(da_path);
 			for(uint64_t i=0;i<n;++i){
 
-				uint8_t c = DA[i];
+				uint8_t c = DA[i] ? '1' : '0';
 				out.write((char*)&c,sizeof(c));
 
 			}
@@ -248,6 +250,8 @@ public:
 private:
 
 	uint64_t n = 0;//total size
+
+	bool out_da = false;
 
 	bwt_t1 * bwt1 = NULL;
 	bwt_t2 * bwt2 = NULL;

@@ -18,41 +18,22 @@ string input_bwt1;
 string input_bwt2;
 string output_file;
 
-bool lcp = false;
+bool out_da = false;
+uint8_t lcp_size = 0;
 
 void help(){
 
 	cout << "merge_bwt [options]" << endl <<
+	"Merges eBWTs of two read sets. Only A,C,G,T, and terminator # are allowed in the input eBWTs." <<
 	"Options:" << endl <<
 	"-h          Print this help" << endl <<
 	"-1 <arg>    Input BWT index 1 (REQUIRED)" << endl <<
 	"-2 <arg>    Input BWT index 2 (REQUIRED)" << endl <<
 	"-o <arg>    Output prefix (REQUIRED)" << endl <<
-	"-l          Compute LCP of merged BWT" << endl;
+	"-d          Output document array as an ASCII file of 0/1. Default: do not output." << endl <<
+	"-l <arg>    Output LCP of the merged BWT using <arg>=0,1,2,4,8 Bytes" << endl <<
+	"            per integer. If arg=0, LCP is not computed (faster). Default: 0." << endl;
 	exit(0);
-}
-
-template<class bwt_1_t, class bwt_2_t, typename lcp_t>
-void merge(string &in1, string &in2){
-
-	cout << "Loading BWTs ... " << endl;
-
-	bwt_1_t BWT1;
-	bwt_2_t BWT2;
-
-	BWT1.load_from_file(in1);
-	BWT2.load_from_file(in2);
-
-	cout << "Done. Size of BWTs: " << BWT1.size() << " and " << BWT2.size() << endl;
-
-	cout << "Merging BWTs ... " << endl;
-	bwt_merger<bwt_1_t,bwt_2_t, uint8_t> M(&BWT1, &BWT2, lcp);
-	cout << "Done. " << endl;
-
-	//cout << "Storing output to file ... " << endl;
-	//M.save_to_file(output_file);
-	//cout << "Done. " << endl;
-
 }
 
 int main(int argc, char** argv){
@@ -60,7 +41,7 @@ int main(int argc, char** argv){
 	if(argc < 4) help();
 
 	int opt;
-	while ((opt = getopt(argc, argv, "h1:2:o:l")) != -1){
+	while ((opt = getopt(argc, argv, "h1:2:o:l:d")) != -1){
 		switch (opt){
 			case 'h':
 				help();
@@ -75,7 +56,10 @@ int main(int argc, char** argv){
 				output_file = string(optarg);
 			break;
 			case 'l':
-				lcp = true;
+				lcp_size = atoi(optarg);
+			break;
+			case 'd':
+				out_da = true;
 			break;
 			default:
 				help();
@@ -91,53 +75,40 @@ int main(int argc, char** argv){
 	cout << "Input bwt index file 2: " << input_bwt2 << endl;
 	cout << "Output prefix: " << output_file << endl;
 
-	//std::ifstream in1(input_bwt1);
-	//std::ifstream in2(input_bwt2);
+	cout << "Loading BWTs ... " << endl;
 
-	merge<dna_bwt_t,dna_bwt_t,uint8_t>(input_bwt1,input_bwt2);
+	dna_bwt_t BWT1;
+	dna_bwt_t BWT2;
 
-	/*uint8_t type1 = 0;
-	uint8_t type2 = 0;
+	BWT1.load_from_file(input_bwt1);
+	BWT2.load_from_file(input_bwt2);
 
-	in1.read((char*)&type1,sizeof(type1));
-	in2.read((char*)&type2,sizeof(type2));
+	cout << "Done. Size of BWTs: " << BWT1.size() << " and " << BWT2.size() << endl;
 
-	cout << "Type of BWT 1: " << type1 << endl;
-	cout << "Type of BWT 2: " << type2 << endl;
+	cout << "Merging BWTs ... " << endl;
 
-	switch(type1){
+	switch(lcp_size){
 
-	case 's': switch(type2){
+		case 0: { bwt_merger<dna_bwt_t,dna_bwt_t, uint8_t> M0(&BWT1, &BWT2, false, out_da);
+				M0.save_to_file(output_file);
+				break; }
+		case 1: { bwt_merger<dna_bwt_t,dna_bwt_t, uint8_t> M1(&BWT1, &BWT2, true, out_da);
+				M1.save_to_file(output_file);
+				break;}
+		case 2: {bwt_merger<dna_bwt_t,dna_bwt_t, uint16_t> M2(&BWT1, &BWT2, true, out_da);
+				M2.save_to_file(output_file);
+				break;}
+		case 4: {bwt_merger<dna_bwt_t,dna_bwt_t, uint32_t> M4(&BWT1, &BWT2, true, out_da);
+				M4.save_to_file(output_file);
+				break;}
+		case 8: {bwt_merger<dna_bwt_t,dna_bwt_t, uint64_t> M8(&BWT1, &BWT2, true, out_da);
+				M8.save_to_file(output_file);
+				break;}
+		default:break;
 
-		case 's': merge<suc_bwt,suc_bwt,uint8_t>(in1,in2); break;
-		case 'e': merge<suc_bwt,rrr_bwt,uint8_t>(in1,in2); break;
-		case 'r': merge<suc_bwt,rle_bwt,uint8_t>(in1,in2); break;
-		default: break;
+	}
 
-	}; break;
-
-	case 'e': switch(type2){
-
-		case 's': merge<rrr_bwt,suc_bwt,uint8_t>(in1,in2); break;
-		case 'e': merge<rrr_bwt,rrr_bwt,uint8_t>(in1,in2); break;
-		case 'r': merge<rrr_bwt,rle_bwt,uint8_t>(in1,in2); break;
-		default: break;
-
-	}; break;
-
-	case 'r':switch(type2){
-
-		case 's': merge<rle_bwt,suc_bwt,uint8_t>(in1,in2); break;
-		case 'e': merge<rle_bwt,rrr_bwt,uint8_t>(in1,in2); break;
-		case 'r': merge<rle_bwt,rle_bwt,uint8_t>(in1,in2); break;
-		default: break;
-
-	}; break;
-
-	default:break;
-
-	}*/
-
+	cout << "Done. " << endl;
 
 }
 
