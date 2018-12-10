@@ -43,8 +43,8 @@ public:
 
 		n = uint64_t(filesize(path));
 
-		n_superblocks = n/SUPERBLOCK_SIZE + (n%SUPERBLOCK_SIZE != 0);
-		n_blocks = n/128 + (n%128 != 0);
+		n_superblocks = (n+1)/SUPERBLOCK_SIZE + ((n+1)%SUPERBLOCK_SIZE != 0);
+		n_blocks = (n+1)/128 + ((n+1)%128 != 0);
 		nbytes = (n_blocks * BYTES_PER_BLOCK);//number of bytes effectively filled with data
 
 		superblock_ranks = vector<p_rank>(n_superblocks);
@@ -94,8 +94,10 @@ public:
 	 */
 	dna_string(uint64_t n){
 
-		n_superblocks = n/SUPERBLOCK_SIZE + (n%SUPERBLOCK_SIZE != 0);
-		n_blocks = n/128 + (n%128 != 0);
+		this->n = n;
+
+		n_superblocks = (n+1)/SUPERBLOCK_SIZE + ((n+1)%SUPERBLOCK_SIZE != 0);
+		n_blocks = (n+1)/128 + ((n+1)%128 != 0);
 		nbytes = (n_blocks * BYTES_PER_BLOCK);//number of bytes effectively filled with data
 
 		superblock_ranks = vector<p_rank>(n_superblocks);
@@ -173,7 +175,7 @@ public:
 		p_rank superblock_r = {};
 		p_rank block_r = {};
 
-		for(uint64_t bl = 0; bl < n_blocks; ++bl){
+		for(uint64_t bl = 0; bl < n_blocks-1; ++bl){
 
 			uint64_t superblock_number = bl/BLOCKS_PER_SUPERBLOCK;
 			uint64_t block_number = bl%BLOCKS_PER_SUPERBLOCK;
@@ -187,12 +189,24 @@ public:
 
 			set_counters(superblock_number, block_number,block_r);
 
-			p_rank local_rank = block_rank(superblock_number, block_number, 128);
+			p_rank local_rank = block_rank(superblock_number, block_number);
 
 			block_r = block_r + local_rank;
 			superblock_r = superblock_r + local_rank;
 
 		}
+
+		uint64_t superblock_number = (n_blocks-1)/BLOCKS_PER_SUPERBLOCK;
+		uint64_t block_number = (n_blocks-1)%BLOCKS_PER_SUPERBLOCK;
+
+		if(block_number == 0){
+
+			superblock_ranks[superblock_number]=superblock_r;
+			block_r = {};
+
+		}
+
+		set_counters(superblock_number, block_number,block_r);
 
 		assert(check_rank());
 
@@ -299,6 +313,8 @@ private:
 	 */
 	inline p_rank block_rank(uint64_t superblock_number, uint64_t block_number, uint64_t block_off){
 
+		assert(block_off<128);
+
 		//starting address of the block
 		uint8_t* start = data + superblock_number*BYTES_PER_SUPERBLOCK + block_number*BYTES_PER_BLOCK;
 
@@ -308,9 +324,40 @@ private:
 		//partial ranks
 		uint32_t * block_ranks = (uint32_t*)(start+48);
 
-		__uint128_t PAD = (1-(block_off == 128))*((~__uint128_t(0))>>block_off);
+		__uint128_t PAD = ((~__uint128_t(0))>>block_off);
 
 		__uint128_t b2 = ~(chars[2] | PAD); //most significant bit, padded and negated
+
+		p_rank res = {
+
+			popcount128(b2 & (~chars[1]) & (~chars[0])),
+			popcount128(b2 & (~chars[1]) & (chars[0])),
+			popcount128(b2 & (chars[1]) & (~chars[0])),
+			popcount128(b2 & (chars[1]) & (chars[0]))
+
+		};
+
+		//assert(check_rank_local(res, superblock_number*SUPERBLOCK_SIZE + block_number*BLOCK_SIZE, block_off));
+
+		return res;
+
+	}
+
+	/*
+	 * rank in whole block given as coordinates: superblock, block
+	 */
+	inline p_rank block_rank(uint64_t superblock_number, uint64_t block_number){
+
+		//starting address of the block
+		uint8_t* start = data + superblock_number*BYTES_PER_SUPERBLOCK + block_number*BYTES_PER_BLOCK;
+
+		//chars[0..3] contains 1st, 2nd, 3rd bits of the 128 characters
+		__uint128_t* chars = (__uint128_t*)(start);
+
+		//partial ranks
+		uint32_t * block_ranks = (uint32_t*)(start+48);
+
+		__uint128_t b2 = ~chars[2]; //most significant bit
 
 		p_rank res = {
 
@@ -340,6 +387,14 @@ private:
 
 		}
 
+		if(r != p){
+			cout << "Error in local rank "
+					<< p.A << "/" << r.A << " "
+					<< p.C << "/" << r.C << " "
+					<< p.G << "/" << r.G << " "
+					<< p.T << "/" << r.T << endl;
+		}
+
 		return r == p;
 
 	}
@@ -352,9 +407,18 @@ private:
 
 		for(int i=0;i<size();++i){
 
-			if(p != parallel_rank(i)) res = false;
+			auto r = parallel_rank(i);
 
-			assert(i<n);
+			if(p != r){
+
+				res = false;
+				cout << "Error in local rank at position " << n << " "
+				<< p.A << "/" << r.A << " "
+				<< p.C << "/" << r.C << " "
+				<< p.G << "/" << r.G << " "
+				<< p.T << "/" << r.T << endl;
+
+			}
 
 			p.A += (operator[](i)=='A');
 			p.C += (operator[](i)=='C');
@@ -363,7 +427,18 @@ private:
 
 		}
 
-		if(p != parallel_rank(n)) res = false;
+		auto r = parallel_rank(n);
+
+		if(p != r){
+
+			res = false;
+			cout << "Error in local rank at position " << n << " "
+			<< p.A << "/" << r.A << " "
+			<< p.C << "/" << r.C << " "
+			<< p.G << "/" << r.G << " "
+			<< p.T << "/" << r.T << endl;
+
+		}
 
 		if(res){
 
@@ -446,8 +521,6 @@ private:
 		};
 
 	}
-
-	static const uint64_t MASK_PAD = 0x7FFFFFFFFFFFFFFF;
 
 	uint64_t n_superblocks = 0;
 	uint64_t n_blocks = 0;
