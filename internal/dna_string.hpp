@@ -15,6 +15,8 @@
  *
  *  Data is stored and cache-aligned in blocks of 512 bits (64 bytes)
  *
+ *  Size of the string: 4n bits, where n = string length
+ *
  *
  */
 
@@ -278,8 +280,8 @@ public:
 		out.write((char*)superblock_ranks.data(),n_superblocks*sizeof(p_rank));
 		w_bytes += n_superblocks*sizeof(p_rank);
 
-		out.write((char*)memory.data(),(nbytes+ALN)*sizeof(uint8_t));
-		w_bytes += (nbytes+ALN)*sizeof(uint8_t);
+		out.write((char*)data,nbytes*sizeof(uint8_t));
+		w_bytes += nbytes*sizeof(uint8_t);
 
 		return w_bytes;
 
@@ -295,8 +297,10 @@ public:
 		superblock_ranks = vector<p_rank>(n_superblocks);
 		in.read((char*)superblock_ranks.data(),n_superblocks*sizeof(p_rank));
 
-		memory = vector<uint8_t>(nbytes+ALN);
-		in.read((char*)memory.data(),(nbytes+ALN)*sizeof(uint8_t));
+		memory = vector<uint8_t>(nbytes+ALN,0);
+		data = memory.data();
+		while(uint64_t(data) % ALN != 0) data++;
+		in.read((char*)data,nbytes*sizeof(uint8_t));
 
 		assert(check_rank());
 
@@ -387,13 +391,13 @@ private:
 
 		}
 
-		if(r != p){
+		/*if(r != p){
 			cout << "Error in local rank "
 					<< p.A << "/" << r.A << " "
 					<< p.C << "/" << r.C << " "
 					<< p.G << "/" << r.G << " "
 					<< p.T << "/" << r.T << endl;
-		}
+		}*/
 
 		return r == p;
 
@@ -412,11 +416,11 @@ private:
 			if(p != r){
 
 				res = false;
-				cout << "Error in local rank at position " << n << " "
+				/*cout << "Error in local rank at position " << n << " "
 				<< p.A << "/" << r.A << " "
 				<< p.C << "/" << r.C << " "
 				<< p.G << "/" << r.G << " "
-				<< p.T << "/" << r.T << endl;
+				<< p.T << "/" << r.T << endl;*/
 
 			}
 
@@ -432,11 +436,11 @@ private:
 		if(p != r){
 
 			res = false;
-			cout << "Error in local rank at position " << n << " "
+			/*cout << "Error in local rank at position " << n << " "
 			<< p.A << "/" << r.A << " "
 			<< p.C << "/" << r.C << " "
 			<< p.G << "/" << r.G << " "
-			<< p.T << "/" << r.T << endl;
+			<< p.T << "/" << r.T << endl;*/
 
 		}
 
