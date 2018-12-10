@@ -72,7 +72,7 @@ public:
 		 */
 
 		uint64_t m = 0;//number of entries filled in DA
-		uint64_t nodes = 0;//number of visited nodes
+		uint64_t leaves = 0;//number of visited nodes
 		uint64_t max_stack = 0;
 
 		{
@@ -96,7 +96,7 @@ public:
 
 				auto L = S.top();
 				S.pop();
-				nodes++;
+				leaves++;
 
 				max_stack = S.size() > max_stack ? S.size() : max_stack;
 
@@ -131,43 +131,12 @@ public:
 				if(range_length(ext_1.G)>0 or range_length(ext_2.G)>0) S.push({{ext_1.G, L1.depth+1},{ext_2.G, L2.depth+1}});
 				if(range_length(ext_1.T)>0 or range_length(ext_2.T)>0) S.push({{ext_1.T, L1.depth+1},{ext_2.T, L2.depth+1}});
 
-				/*
-				//leaves with extension A
-				sa_leaf l1A = { bwt1->LF(L1.rn,'A'), L1.depth+1 };
-				sa_leaf l2A = { bwt2->LF(L2.rn,'A'), L2.depth+1 };
-				//leaves with extension C
-				sa_leaf l1C = { bwt1->LF(L1.rn,'C'), L1.depth+1 };
-				sa_leaf l2C = { bwt2->LF(L2.rn,'C'), L2.depth+1 };
-				//leaves with extension G
-				sa_leaf l1G = { bwt1->LF(L1.rn,'G'), L1.depth+1 };
-				sa_leaf l2G = { bwt2->LF(L2.rn,'G'), L2.depth+1 };
-				//leaves with extension T
-				sa_leaf l1T;
-				sa_leaf l2T;
-
-				if(		leaf_size(l1A)+leaf_size(l1C)+leaf_size(l1G) < leaf_size(L1) or
-						leaf_size(l2A)+leaf_size(l2C)+leaf_size(l2G) < leaf_size(L2)){
-
-					l1T = { bwt1->LF(L1.rn,'T'), L1.depth+1 };
-					l2T = { bwt2->LF(L2.rn,'T'), L2.depth+1 };
-
-					S.push({l1T,l2T});
-
-				}
-
-
-				if(leaf_size(l1A)>0 or leaf_size(l2A)>0) S.push({l1A,l2A});
-				if(leaf_size(l1C)>0 or leaf_size(l2C)>0) S.push({l1C,l2C});
-				if(leaf_size(l1G)>0 or leaf_size(l2G)>0) S.push({l1G,l2G});
-			*/
-
-
-
 			}
 		}
 
 		cout << m << "/" << n << endl;
 		cout << "max stack depth = " << max_stack << endl;
+		cout << "processed " << leaves << " suffix-tree leaves." << endl;
 
 		assert(m==n);
 

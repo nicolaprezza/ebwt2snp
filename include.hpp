@@ -460,17 +460,6 @@ public:
 
 	}
 
-	/*p_rank operator-(const p_rank& a) const{
-
-		return {
-			A-a.A,
-			C-a.C,
-			G-a.G,
-			T-a.T
-		};
-
-	}*/
-
 	bool operator==(const p_rank& a) const{
 
 		return a.A == A and a.C == C and a.G == G and a.T == T;
@@ -491,13 +480,13 @@ public:
 
 };
 
-p_range fold_ranks(p_rank &a, p_rank &b){
+inline p_range fold_ranks(p_rank &a, p_rank &b){
 
 	return {{a.A, b.A},{a.C, b.C},{a.G, b.G},{a.T, b.T}};
 
 }
 
-uint64_t popcount128(__uint128_t x){
+inline uint64_t popcount128(__uint128_t x){
 
 	return __builtin_popcountll(uint64_t(x>>64)) + __builtin_popcountll( x & 0xFFFFFFFFFFFFFFFF );
 

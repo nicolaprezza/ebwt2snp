@@ -66,31 +66,6 @@ public:
 	}
 
 	/*
-	 * \param r right-exclusive range of a string w
-	 * \param c character
-	 * \return right-exclusive range of cw
-	 */
-	/*range_t LF(range_t rn, uint8_t c){
-
-		//number of c before the interval
-		uint64_t c_before = rank(rn.first,c);
-
-		//number of c inside the interval rn
-		uint64_t c_inside = rn.second > rn.first ? rank(rn.second,c) - c_before : 0;
-
-		assert(F[c] <= size());
-		assert(c_before <= size());
-
-		uint64_t l = F[c] + c_before;
-
-		assert(l<=size());
-		assert(l+c_inside<=size());
-
-		return {l,l+c_inside};
-
-	}*/
-
-	/*
 	 * left-extend range by all 4 nucleotides
 	 */
 	p_range parallel_LF(range_t rn){
@@ -101,7 +76,12 @@ public:
 		p_rank start = BWT.parallel_rank(rn.first);
 
 		//number of A,C,T,G before end of interval (last position of interval included)
-		p_rank end = BWT.parallel_rank(rn.second);
+		p_rank end;
+
+		if(rn.second>rn.first)
+			end	= BWT.parallel_rank(rn.second);
+		else
+			end = start;
 
 		assert(start <= end);
 
