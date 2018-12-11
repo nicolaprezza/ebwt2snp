@@ -264,11 +264,10 @@ public:
 	}
 
 	/*
-	 * Input: suffix array node N representing right-maximal string W
-	 * Output: vector of sa nodes A.W,...,T.W reached
-	 * following Weiner links from N. Nodes could be implicit!
+	 * Input: suffix tree node N.
+	 * Output: 4 suffix tree nodes (explicit, implicit, or empty) reached applying LF for A,C,G,T from N
 	 */
-	p_node weiner(sa_node N){
+	p_node LF(sa_node N){
 
 		p_rank before_TERM;
 		p_rank before_A;
@@ -294,11 +293,16 @@ public:
 		if(N.last == N.first_T) before_end = before_T;
 		else before_end = parallel_rank(N.last);
 
+		uint64_t A = F['A'];
+		uint64_t C = F['C'];
+		uint64_t G = F['G'];
+		uint64_t T = F['T'];
+
 		return {
-			{before_TERM.A, before_A.A, before_C.A, before_G.A, before_T.A, before_end.A, N.depth+1},
-			{before_TERM.C, before_A.C, before_C.C, before_G.C, before_T.C, before_end.C, N.depth+1},
-			{before_TERM.G, before_A.G, before_C.G, before_G.G, before_T.G, before_end.G, N.depth+1},
-			{before_TERM.T, before_A.T, before_C.T, before_G.T, before_T.T, before_end.T, N.depth+1}
+			{A + before_TERM.A, A + before_A.A, A + before_C.A, A + before_G.A, A + before_T.A, A + before_end.A, N.depth+1},
+			{C + before_TERM.C, C + before_A.C, C + before_C.C, C + before_G.C, C + before_T.C, C + before_end.C, N.depth+1},
+			{G + before_TERM.G, G + before_A.G, G + before_C.G, G + before_G.G, G + before_T.G, G + before_end.G, N.depth+1},
+			{T + before_TERM.T, T + before_A.T, T + before_C.T, T + before_G.T, T + before_T.T, T + before_end.T, N.depth+1}
 		};
 
 	}

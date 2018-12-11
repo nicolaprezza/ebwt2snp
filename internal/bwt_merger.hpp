@@ -65,7 +65,7 @@ public:
 
 		if(compute_lcp){
 
-			LCP = vector<lcp_int_t>(n);
+			LCP = vector<lcp_int_t>(n, nil);
 			LCP[0] = 0;
 		}
 
@@ -113,7 +113,7 @@ public:
 
 				uint64_t start1 = L1.rn.first + L2.rn.first;//start position of first interval in merged intervals
 				uint64_t start2 = L2.rn.first + L1.rn.second;//start position of second interval in merged intervals
-				uint64_t end = L1.rn.second + L2.rn.second;//end position of merged intervals
+				uint64_t end = L1.rn.second + L2.rn.second;//end position (excluded) of merged intervals
 
 				assert(leaf_size(L)>0);
 				assert(end>start1);
@@ -134,7 +134,10 @@ public:
 
 					for(uint64_t i = start1+1; i<end; ++i){
 
+						assert(LCP[i]==nil);
+
 						LCP[i] = L1.depth;
+
 						lcp_values++;
 
 					}
@@ -202,39 +205,56 @@ public:
 
 				sa_node merged = merge_nodes(N1, N2);
 
-				if(merged.first_A-merged.first_TERM > 0){
+				assert(merged.first_A >= merged.first_TERM);
+				assert(merged.first_C >= merged.first_A);
+				assert(merged.first_G >= merged.first_C);
+				assert(merged.first_T >= merged.first_G);
+
+				assert(number_of_children(merged) >= 2);
+
+				if(has_child_TERM(merged) and merged.first_A != merged.last){
+					//cout << "new LCP in position " << merged.first_A << endl;
+					assert(LCP[merged.first_A]==nil);
 					LCP[merged.first_A] = merged.depth;
 					lcp_values++;
 				}
-				if(merged.first_C-merged.first_A > 0){
+				if(has_child_A(merged) and merged.first_C != merged.last){
+					//cout << "new LCP in position " << merged.first_C << endl;
+					assert(LCP[merged.first_C]==nil);
 					LCP[merged.first_C] = merged.depth;
 					lcp_values++;
 				}
-				if(merged.first_G-merged.first_C > 0){
+				if(has_child_C(merged) and merged.first_G != merged.last){
+					//cout << "new LCP in position " << merged.first_G << endl;
+					assert(LCP[merged.first_G]==nil);
 					LCP[merged.first_G] = merged.depth;
 					lcp_values++;
 				}
-				if(merged.first_T-merged.first_G > 0){
+				if(has_child_G(merged) and merged.first_T != merged.last){
+					//cout << "new LCP in position " << merged.first_T << endl;
+					assert(LCP[merged.first_T]==nil);
 					LCP[merged.first_T] = merged.depth;
 					lcp_values++;
 				}
 
-				p_node left_exts1 = bwt1->weiner(N1);
-				p_node left_exts2 = bwt2->weiner(N2);
+				p_node left_exts1 = bwt1->LF(N1);
+				p_node left_exts2 = bwt2->LF(N2);
 
-				/*cout << "weiners:" << endl;
+				/*cout << "Node:" << endl;
 				print_node(N1);
-				print_node(N2);
-				cout << endl;
+				cout << "Extesions:" << endl;
 				print_nodes(left_exts1);
-				cout << endl;
+				cout << "\nNode:" << endl;
+				print_node(N2);
+				cout << "Extesions:" << endl;
 				print_nodes(left_exts2);
 				cout << endl;*/
 
-				if(number_of_children(left_exts1.A, left_exts2.A)>1) S.push({left_exts1.A, left_exts2.A});
-				if(number_of_children(left_exts1.C, left_exts2.C)>1) S.push({left_exts1.C, left_exts2.C});
-				if(number_of_children(left_exts1.G, left_exts2.G)>1) S.push({left_exts1.G, left_exts2.G});
-				if(number_of_children(left_exts1.T, left_exts2.T)>1) S.push({left_exts1.T, left_exts2.T});
+				//push on stack only explicit suffix tree nodes
+				if(number_of_children(left_exts1.A, left_exts2.A)>=2) S.push({left_exts1.A, left_exts2.A});
+				if(number_of_children(left_exts1.C, left_exts2.C)>=2) S.push({left_exts1.C, left_exts2.C});
+				if(number_of_children(left_exts1.G, left_exts2.G)>=2) S.push({left_exts1.G, left_exts2.G});
+				if(number_of_children(left_exts1.T, left_exts2.T)>=2) S.push({left_exts1.T, left_exts2.T});
 
 			}
 
@@ -325,6 +345,8 @@ private:
 
 	bwt_t1 * bwt1 = NULL;
 	bwt_t2 * bwt2 = NULL;
+
+	lcp_int_t nil = ~lcp_int_t(0);
 
 };
 

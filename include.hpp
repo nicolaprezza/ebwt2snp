@@ -535,13 +535,29 @@ inline uint64_t popcount128(__uint128_t x){
 
 }
 
-bool number_of_children(sa_node N){
+inline bool has_child_TERM(sa_node N){
+	return N.first_A > N.first_TERM;
+}
+inline bool has_child_A(sa_node N){
+	return N.first_C > N.first_A;
+}
+inline bool has_child_C(sa_node N){
+	return N.first_G > N.first_C;
+}
+inline bool has_child_G(sa_node N){
+	return N.first_T > N.first_G;
+}
+inline bool has_child_T(sa_node N){
+	return N.last > N.first_T;
+}
 
-	return 	(N.last-N.first_T>0) +
-			(N.first_T-N.first_G>0) +
-			(N.first_G-N.first_C>0) +
-			(N.first_C-N.first_A>0) +
-			(N.first_A-N.first_TERM>0);
+uint8_t number_of_children(sa_node N){
+
+	return 	uint8_t(N.last>N.first_T) +
+			uint8_t(N.first_T>N.first_G) +
+			uint8_t(N.first_G>N.first_C) +
+			uint8_t(N.first_C>N.first_A) +
+			uint8_t(N.first_A>N.first_TERM);
 
 }
 
@@ -550,11 +566,11 @@ bool number_of_children(sa_node N){
  */
 uint8_t number_of_children(sa_node N1, sa_node N2){
 
-	return 	(N1.last-N1.first_T>0 or N2.last-N2.first_T>0) +
-			(N1.first_T-N1.first_G>0 or N2.first_T-N2.first_G>0) +
-			(N1.first_G-N1.first_C>0 or N2.first_G-N2.first_C>0) +
-			(N1.first_C-N1.first_A>0 or N2.first_C-N2.first_A>0) +
-			(N1.first_A-N1.first_TERM>0 or N2.first_A-N2.first_TERM>0);
+	return 	uint8_t((N1.last>N1.first_T) or (N2.last>N2.first_T)) +
+			uint8_t((N1.first_T>N1.first_G) or (N2.first_T>N2.first_G)) +
+			uint8_t((N1.first_G>N1.first_C) or (N2.first_G>N2.first_C)) +
+			uint8_t((N1.first_C>N1.first_A) or (N2.first_C>N2.first_A)) +
+			uint8_t((N1.first_A>N1.first_TERM) or (N2.first_A>N2.first_TERM));
 
 }
 
