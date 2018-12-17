@@ -36,8 +36,5 @@ add_executable(clust2snp clust2snp.cpp)
 add_executable(ebwt2clust ebwt2clust.cpp)
 TARGET_LINK_LIBRARIES(ebwt2clust sdsl)
 
-add_executable(merge_bwt merge_bwt.cpp)
-TARGET_LINK_LIBRARIES(merge_bwt sdsl)
-
 add_executable(snp_vs_vcf snp_vs_vcf.cpp)
 add_executable(differentialVCF differentialVCF.cpp)
