@@ -12,9 +12,6 @@ project (ebwt2snp)
 
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/internal)
-include_directories(~/include) #SDSL headers are here
-
-LINK_DIRECTORIES(~/lib) #SDSL lib are here
 
 message("Building in ${CMAKE_BUILD_TYPE} mode")
 
@@ -24,17 +21,11 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0 -ggdb -g")
 set(CMAKE_CXX_FLAGS_RELEASE "-g -ggdb -Ofast -fstrict-aliasing -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -Ofast -fstrict-aliasing -march=native")
 
-add_executable(build_index build_index.cpp)
-TARGET_LINK_LIBRARIES(build_index sdsl)
-
 add_executable(filter_snp filter_snp.cpp)
 add_executable(vcf_vs_vcf vcf_vs_vcf.cpp)
 add_executable(sam2vcf sam2vcf.cpp)
 add_executable(snp2fastq snp2fastq.cpp)
 add_executable(clust2snp clust2snp.cpp)
-
 add_executable(ebwt2clust ebwt2clust.cpp)
-TARGET_LINK_LIBRARIES(ebwt2clust sdsl)
-
 add_executable(snp_vs_vcf snp_vs_vcf.cpp)
 add_executable(differentialVCF differentialVCF.cpp)

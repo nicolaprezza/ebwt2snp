@@ -34,20 +34,11 @@ A pre-print version can be found here: https://arxiv.org/abs/1805.01876.
 
 ### Install
 
-The new version of ebwt2snp (still in development) requires the sdsl library installed (https://github.com/simongog/sdsl-lite). Read below for more information. 
-
 ~~~~
-#download software
+#download ebwt2snp, EGSA, and BCR
 git clone https://github.com/nicolaprezza/ebwt2snp
 git clone https://github.com/felipelouza/egsa
 git clone https://github.com/giovannarosone/BCR\_LCP\_GSA
-git clone https://github.com/simongog/sdsl-lite
-
-#install sdsl (this command installs sdsl in ~: make sure you have the right permissions)
-
-cd sdsl-lite
-./install.sh
-cd ..
 
 #build ebwt2snp
 cd ebwt2snp

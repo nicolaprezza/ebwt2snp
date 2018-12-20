@@ -1,9 +1,4 @@
-#ifndef INCLUDE_HPP_
-#define INCLUDE_HPP_
-
 #include <fstream>
-#include <vector>
-#include <cassert>
 
 using namespace std;
 
@@ -16,9 +11,8 @@ typedef uint32_t dataTypeNSeq;	//number of sequences
 typedef __int128 uint128_t;
 
 typedef pair<uint64_t,uint32_t> coordinate;//suffix array coordinate (text, suff)
-typedef pair<uint64_t,uint64_t> range_t;
 
-const uint8_t TERM = '#';
+
 
 /*
  * EGSA
@@ -31,11 +25,6 @@ typedef struct{
 	int8		bwt;
 
 } t_GSA;
-
-std::ifstream::pos_type filesize(string filename){
-    std::ifstream in(filename.c_str(), std::ifstream::ate | std::ifstream::binary);
-    return in.tellg();
-}
 
 /*
  * this class abstracts the EGSA type and allows reading from different formats (EGSA/BCR)
@@ -76,9 +65,7 @@ public:
 			BWT.open(BWT_path, ios::in | ios::binary);
 			GSA.open(GSA_path, ios::in | ios::binary);
 
-			//note: we require LCP and BWT to exist. Missing GSA files
-			//will generate 0-fields in the returned elements
-			if(LCP.is_open() and BWT.is_open()){
+			if(LCP.is_open() and BWT.is_open() and GSA.is_open()){
 
 				bcr = true;
 
@@ -169,31 +156,21 @@ public:
 
 		}else if(bcr){
 
+			switch(suff_size){
 
-			if(GSA.is_open()){
+				case 1 : uint8_t x8; GSA.read((char*)&x8, 1); e.suff = x8;  break;
+				case 2 : uint16_t x16; GSA.read((char*)&x16, 2); e.suff = x16; break;
+				case 4 : uint32_t x32; GSA.read((char*)&x32, 4); e.suff = x32; break;
+				case 8 : uint64_t x64; GSA.read((char*)&x64, 8); e.suff = x64; break;
 
-				switch(suff_size){
+			}
 
-					case 1 : uint8_t x8; GSA.read((char*)&x8, 1); e.suff = x8;  break;
-					case 2 : uint16_t x16; GSA.read((char*)&x16, 2); e.suff = x16; break;
-					case 4 : uint32_t x32; GSA.read((char*)&x32, 4); e.suff = x32; break;
-					case 8 : uint64_t x64; GSA.read((char*)&x64, 8); e.suff = x64; break;
+			switch(da_size){
 
-				}
-
-				switch(da_size){
-
-					case 1 : uint8_t x8; GSA.read((char*)&x8, 1); e.text = x8;  break;
-					case 2 : uint16_t x16; GSA.read((char*)&x16, 2); e.text = x16; break;
-					case 4 : uint32_t x32; GSA.read((char*)&x32, 4); e.text = x32; break;
-					case 8 : uint64_t x64; GSA.read((char*)&x64, 8); e.text = x64; break;
-
-				}
-
-			}else{
-
-				e.suff = 0;
-				e.text = 0;
+				case 1 : uint8_t x8; GSA.read((char*)&x8, 1); e.text = x8;  break;
+				case 2 : uint16_t x16; GSA.read((char*)&x16, 2); e.text = x16; break;
+				case 4 : uint32_t x32; GSA.read((char*)&x32, 4); e.text = x32; break;
+				case 8 : uint64_t x64; GSA.read((char*)&x64, 8); e.text = x64; break;
 
 			}
 
@@ -241,6 +218,35 @@ private:
 
 };
 
+t_GSA read_el(ifstream & egsa, bool bcr){
+
+	t_GSA e;
+
+	if(bcr){
+
+        dataTypeNSeq txt;
+        uint8_t suf;
+        uint8_t lcp;
+
+        egsa.read((char*)&txt, sizeof(dataTypeNSeq));
+        egsa.read((char*)&suf, sizeof(dataTypelenSeq));
+        egsa.read((char*)&lcp, sizeof(dataTypelenSeq));
+        egsa.read((char*)&e.bwt, sizeof(uint8_t));
+
+        e.suff = suf;
+        e.text = txt;
+        e.lcp = lcp;
+
+	}else{
+
+		egsa.read((char*)&e, sizeof(int_text)+sizeof(int_suff)+sizeof(int_lcp)+sizeof(int8));
+
+	}
+
+	return e;
+
+}
+
 unsigned char int_to_base(int i){
 
 	switch(i){
@@ -249,7 +255,6 @@ unsigned char int_to_base(int i){
 		case 1: return 'C'; break;
 		case 2: return 'G'; break;
 		case 3: return 'T'; break;
-		case 4: return TERM; break;
 
 	}
 
@@ -265,8 +270,7 @@ int base_to_int(unsigned char c){
 		case 'C': case 'c': return 1; break;
 		case 'G': case 'g': return 2; break;
 		case 'T': case 't': return 3; break;
-		case TERM: return 4; break;
-		default: return rand()%4; break;
+		case 'N': case 'n': return rand()%4; break;
 
 	}
 
@@ -282,7 +286,6 @@ unsigned char RC(unsigned char c){
 		case 'C': case 'c': return 'G'; break;
 		case 'G': case 'g': return 'C'; break;
 		case 'T': case 't': return 'A'; break;
-		case TERM: return TERM; break;
 		default: break;
 
 	}
@@ -366,213 +369,4 @@ private:
 	vector<vector<int>> counts;//base counts
 
 };
-
-uint8_t MASK_TERM = uint8_t(1);
-uint8_t MASK_A = uint8_t(2);
-uint8_t MASK_C = uint8_t(4);
-uint8_t MASK_G = uint8_t(8);
-uint8_t MASK_T = uint8_t(16);
-
-
-/*
- * representation of a right-maximal substring (SA node) as a list of BWT intervals
- */
-struct sa_node{
-
-	//right-maximal substring: string W such that Wa_1, ..., Wa_k occur in the text for
-	//at least k>=2 characters a_1, ..., a_k
-
-	//Length k+1. Inclusive bwt range of W.chars[i] is <first[i], first[i+1]-1>
-	//Range of W is <first[0], first[k]-1>
-	//Equivalently, number of suffixes smaller than W.chars[i] is first[i]
-	//vector<uint64_t> first;
-
-	uint64_t first_TERM;
-	uint64_t first_A;
-	uint64_t first_C;
-	uint64_t first_G;
-	uint64_t first_T;
-	uint64_t last;
-
-	//depth = |W|
-	uint64_t depth;
-
-};
-
-void print_node(sa_node n){
-
-	cout << "[" << 	n.first_TERM << ", " <<
-					n.first_A << ", " <<
-					n.first_C << ", " <<
-					n.first_G << ", " <<
-					n.first_T << ", " <<
-					n.last << "]" << endl;
-
-}
-
-sa_node merge_nodes(sa_node a, sa_node b){
-
-	assert(a.depth == b.depth);
-
-	return {
-		a.first_TERM + b.first_TERM,
-		a.first_A + b.first_A,
-		a.first_C + b.first_C,
-		a.first_G + b.first_G,
-		a.first_T + b.first_T,
-		a.last + b.last,
-		a.depth
-	};
-
-}
-
-/*
- * suffix array leaf = BWT range (inclusive) of W.TERM, for some string W.
- *
- */
-struct sa_leaf{
-
-	//rn.first = first position of range. Equivalently, number of suffixes smaller than W.TERM (valid also if W.TERM does not occur)
-	//rn.second = last position (excluded) of interval.  Equivalently, number of suffixes smaller than W.TERM + number of occurrences of W.TERM
-	//if last == first, then W.TERM does not occur (however, 'first' is in any case number of suffixes smaller than W.TERM)
-	range_t rn;
-
-	//depth = |W.TERM|
-	uint64_t depth;
-
-};
-
-uint64_t range_length(range_t r){
-	assert(r.second >= r.first);
-	return r.second - r.first;
-}
-
-uint64_t leaf_size(sa_leaf L){
-	return range_length(L.rn);
-}
-
-uint64_t leaf_size(pair<sa_leaf, sa_leaf> P){
-	return leaf_size(P.first) + leaf_size(P.second);
-}
-
-
-struct p_range{
-
-	range_t A;
-	range_t C;
-	range_t G;
-	range_t T;
-
-};
-
-struct p_node{
-
-	sa_node A;
-	sa_node C;
-	sa_node G;
-	sa_node T;
-
-};
-
-void print_nodes(p_node p){
-
-	print_node(p.A);
-	print_node(p.C);
-	print_node(p.G);
-	print_node(p.T);
-
-}
-
-struct p_rank{
-
-public:
-
-	uint64_t A;
-	uint64_t C;
-	uint64_t G;
-	uint64_t T;
-
-	p_rank operator+(const p_rank& a) const{
-
-		return {
-			a.A + A,
-			a.C + C,
-			a.G + G,
-			a.T + T
-		};
-
-	}
-
-	bool operator==(const p_rank& a) const{
-
-		return a.A == A and a.C == C and a.G == G and a.T == T;
-
-	}
-
-	bool operator!=(const p_rank& a) const{
-
-		return a.A != A or a.C != C or a.G != G or a.T != T;
-
-	}
-
-	bool operator<=(const p_rank& a) const{
-
-		return A <= a.A and C <= a.C and G <= a.G and T <= a.T;
-
-	}
-
-};
-
-inline p_range fold_ranks(p_rank &a, p_rank &b){
-
-	return {{a.A, b.A},{a.C, b.C},{a.G, b.G},{a.T, b.T}};
-
-}
-
-inline uint64_t popcount128(__uint128_t x){
-
-	return __builtin_popcountll(uint64_t(x>>64)) + __builtin_popcountll( x & 0xFFFFFFFFFFFFFFFF );
-
-}
-
-inline bool has_child_TERM(sa_node N){
-	return N.first_A > N.first_TERM;
-}
-inline bool has_child_A(sa_node N){
-	return N.first_C > N.first_A;
-}
-inline bool has_child_C(sa_node N){
-	return N.first_G > N.first_C;
-}
-inline bool has_child_G(sa_node N){
-	return N.first_T > N.first_G;
-}
-inline bool has_child_T(sa_node N){
-	return N.last > N.first_T;
-}
-
-uint8_t number_of_children(sa_node N){
-
-	return 	uint8_t(N.last>N.first_T) +
-			uint8_t(N.first_T>N.first_G) +
-			uint8_t(N.first_G>N.first_C) +
-			uint8_t(N.first_C>N.first_A) +
-			uint8_t(N.first_A>N.first_TERM);
-
-}
-
-/*
- * number of children in the union of the two nodes
- */
-uint8_t number_of_children(sa_node N1, sa_node N2){
-
-	return 	uint8_t((N1.last>N1.first_T) or (N2.last>N2.first_T)) +
-			uint8_t((N1.first_T>N1.first_G) or (N2.first_T>N2.first_G)) +
-			uint8_t((N1.first_G>N1.first_C) or (N2.first_G>N2.first_C)) +
-			uint8_t((N1.first_C>N1.first_A) or (N2.first_C>N2.first_A)) +
-			uint8_t((N1.first_A>N1.first_TERM) or (N2.first_A>N2.first_TERM));
-
-}
-
-#endif /* INCLUDE_HPP_ */
 
