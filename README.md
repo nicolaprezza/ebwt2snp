@@ -1,5 +1,7 @@
 # ebwt2snp
 
+**This is an old version that is no longer supported. Please, use instead https://github.com/nicolaprezza/ebwt2snp-v2 **
+
 ### Overview
 
 The *ebwt2snp* suite can be used to discover SNPs/indels between two sets of reads (fasta/fastq) *without* aligning them to  a reference genome (alignment-free, reference-free) with just a scan of the extended Burrows Wheeler Transform (e-BWT) of the sets of reads and the LCP and gSA arrays. The output is a fasta file (in KisSNP2 format) where sequences are the contexts surrounding the identified SNPs.  
