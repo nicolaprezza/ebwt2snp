@@ -27,12 +27,17 @@ The paper describing the theory behind the tool (eBWT positional clustering) has
 
 ---
 
-*Nicola Prezza, Nadia Pisanti, Marinella Sciortino and Giovanna Rosone: Detecting mutations by eBWT. WABI 2018. Leibniz International Proceedings in Informatics, LIPIcs , 2018, 113, art. no. 3, Schloss Dagstuhl--Leibniz-Zentrum für Informatik.*
+### Publications
 
----
+*Nicola Prezza, Nadia Pisanti, Marinella Sciortino and Giovanna Rosone: Detecting mutations by eBWT. WABI 2018. Leibniz International Proceedings in Informatics, LIPIcs , 2018, 113, art. no. 3, Schloss Dagstuhl--Leibniz-Zentrum für Informatik.*
 
 A pre-print version can be found here: https://arxiv.org/abs/1805.01876. 
 
+### Funding
+
+Supported by the project Italian MIUR-SIR CMACBioSeq ("Combinatorial methods for analysis and compression of biological sequences") grant n.~RBSI146R5L, PI: Giovanna Rosone
+
+---
 
 ### Install
 
